@@ -34,7 +34,7 @@ impl<T: Send + Sync + std::fmt::Debug> AbciApi<T> {
 }
 
 impl AbciApi<ResponseQuery> {
-    pub fn routes(self) -> impl Filter<Extract = impl warp::Reply, Error = Rejection> + Clone {
+    pub fn routes(self) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
         let route_broadcast_tx = warp::path("broadcast_tx")
             .and(warp::query::<BroadcastTxQuery>())
             .and_then(move |req: BroadcastTxQuery| async move {

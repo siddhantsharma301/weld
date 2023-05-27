@@ -1,4 +1,5 @@
 use crate::{Consensus, Info, Mempool, Snapshot, State};
+use anvil::eth::backend::db::StateDb as AnvilDb;
 use foundry_evm::revm::{
     db::{CacheDB, EmptyDB},
     AccountInfo,
@@ -13,16 +14,16 @@ pub struct App<Db> {
     pub info: Info<Db>,
 }
 
-impl Default for App<CacheDB<EmptyDB>> {
+impl Default for App<AnvilDb<EmptyDB>> {
     fn default() -> Self {
         Self::new(false)
     }
 }
 
-impl App<CacheDB<EmptyDB>> {
+impl App<AnvilDb<EmptyDB>> {
     pub fn new(demo: bool) -> Self {
         let mut state = State {
-            db: CacheDB::new(EmptyDB()),
+            db: AnvilDb::new(EmptyDB()),
             block_height: Default::default(),
             app_hash: Default::default(),
             env: Default::default(),

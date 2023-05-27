@@ -11,6 +11,7 @@ use abci::{
     types::*,
 };
 
+use anvil::eth::backend::db::StateDb as AnvilDb;
 use foundry_evm::revm::{
     self,
     db::{CacheDB, EmptyDB},
@@ -28,12 +29,12 @@ pub struct State<Db> {
     pub env: Env,
 }
 
-impl Default for State<CacheDB<EmptyDB>> {
+impl Default for State<AnvilDb<EmptyDB>> {
     fn default() -> Self {
         Self {
             block_height: 0,
             app_hash: Vec::new(),
-            db: CacheDB::new(EmptyDB()),
+            db: AnvilDb::new(EmptyDB()),
             env: Default::default(),
         }
     }

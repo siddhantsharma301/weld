@@ -4456,9 +4456,8 @@ dependencies = [
 
 [[package]]
 name = "revm"
-version = "1.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab402ae244afdd560b2aa710df5af557bc791b1cca6fec174ced0cf781e13134"
+version = "1.7.0"
+source = "git+https://github.com/bluealloy/revm?rev=54460fa87edfc954cef279919050f78722fec013#54460fa87edfc954cef279919050f78722fec013"
 dependencies = [
  "arrayref",
  "auto_impl 1.1.0",
@@ -4475,16 +4474,13 @@ dependencies = [
 
 [[package]]
 name = "revm_precompiles"
-version = "1.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0353d456ef3e989dc9190f42c6020f09bc2025930c37895826029304413204b5"
+version = "1.1.0"
+source = "git+https://github.com/bluealloy/revm?rev=54460fa87edfc954cef279919050f78722fec013#54460fa87edfc954cef279919050f78722fec013"
 dependencies = [
  "bytes",
- "hashbrown 0.13.2",
  "k256 0.11.6",
  "num",
- "once_cell",
- "primitive-types 0.12.1",
+ "primitive-types 0.11.1",
  "ripemd",
  "sha2 0.10.6",
  "sha3",
@@ -6598,8 +6594,3 @@ dependencies = [
  "libc",
  "pkg-config",
 ]
-
-[[patch.unused]]
-name = "revm"
-version = "3.3.0"
-source = "git+https://github.com/bluealloy/revm#e0ec1cc93228508f6eafba2cba5e08f64c0c5454"

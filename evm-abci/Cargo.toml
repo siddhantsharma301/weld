@@ -22,8 +22,8 @@ clap = { version = "3.0.10", features = [
     "wrap_help",
 ] }
 clap_complete = "3.0.4"
-foundry-evm = { git = "https://github.com/foundry-rs/foundry" }
-anvil = { git = "https://github.com/foundry-rs/foundry" }
+foundry-evm = { git = "https://github.com/foundry-rs/foundry", rev = "028e8884a1319987db1b2d9672ebf4ef922a524b" }
+anvil = { git = "https://github.com/foundry-rs/foundry", rev = "028e8884a1319987db1b2d9672ebf4ef922a524b" }
 serde = { version = "1.0.138", features = ["derive"] }
 reqwest = "0.11.11"
 tracing = "0.1.35"

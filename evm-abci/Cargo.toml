@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 abci-rs = { version = "0.11.3", features = ["async-api" ] }
 async-trait = "0.1.56"
-ethers = { git = "https://github.com/gakonst/ethers-rs " }
+ethers = { git = "https://github.com/MaanavKhaitan/ethers-rs" }
 eyre = "0.6.8"
 hex = "0.4.3"
 serde_json = "1.0.82"

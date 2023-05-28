@@ -2337,10 +2337,10 @@ name = "foundry-utils"
 version = "0.2.0"
 source = "git+https://github.com/foundry-rs/foundry?rev=028e8884a1319987db1b2d9672ebf4ef922a524b#028e8884a1319987db1b2d9672ebf4ef922a524b"
 dependencies = [
- "ethers-addressbook 2.0.4",
- "ethers-core 2.0.4",
- "ethers-etherscan 2.0.4",
- "ethers-providers 2.0.4",
+ "ethers-addressbook",
+ "ethers-core",
+ "ethers-etherscan",
+ "ethers-providers",
  "ethers-solc",
  "eyre",
  "futures",

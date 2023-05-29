@@ -51,14 +51,14 @@ impl Default for State<CacheDB<EmptyDB>> {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
-pub struct TransactionResult {
-    transaction: TransactionRequest,
-    exit: Return,
-    out: ResultAndState,
-    gas: u64,
-    logs: Vec<RevmLog>,
-}
+// #[derive(serde::Serialize, serde::Deserialize, Debug)]
+// pub struct TransactionResult {
+//     transaction: TransactionRequest,
+//     exit: Return,
+//     out: ResultAndState,
+//     gas: u64,
+//     logs: Vec<RevmLog>,
+// }
 
 impl<Db: Database + DatabaseCommit> State<Db> {
     async fn execute(
@@ -300,6 +300,7 @@ impl SnapshotTrait for Snapshot {}
 mod tests {
     use super::*;
     // use ethers::prelude::*;
+    use foundry_evm::revm::primitives::Eval;
 
     #[tokio::test]
     async fn run_and_query_tx() {
@@ -337,7 +338,7 @@ mod tests {
         let res = consensus.deliver_tx(req).await;
         let res: TransactionResult = serde_json::from_slice(&res.data).unwrap();
         // tx passed
-        assert_eq!(res.exit, Return::Stop);
+        assert_eq!(res.exit, Eval::Stop);
 
         // now we query the state for bob's balance
         let info = Info {

@@ -1,8 +1,7 @@
 use crate::{Consensus, Info, Mempool, Snapshot, State};
-use anvil::eth::backend::db::StateDb as AnvilDb;
 use foundry_evm::revm::{
     db::{CacheDB, EmptyDB},
-    AccountInfo,
+    primitives::AccountInfo,
 };
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -14,16 +13,16 @@ pub struct App<Db> {
     pub info: Info<Db>,
 }
 
-impl Default for App<AnvilDb<EmptyDB>> {
+impl Default for App<CacheDB<EmptyDB>> {
     fn default() -> Self {
         Self::new(false)
     }
 }
 
-impl App<AnvilDb<EmptyDB>> {
+impl App<CacheDB<EmptyDB>> {
     pub fn new(demo: bool) -> Self {
         let mut state = State {
-            db: AnvilDb::new(EmptyDB()),
+            db: CacheDB::new(EmptyDB()),
             block_height: Default::default(),
             app_hash: Default::default(),
             env: Default::default(),
@@ -36,7 +35,7 @@ impl App<AnvilDb<EmptyDB>> {
                     .parse()
                     .unwrap(),
                 AccountInfo {
-                    balance: ethers::utils::parse_ether(1.5).unwrap(),
+                    balance: ethers::utils::parse_ether(1.5).unwrap().into(),
                     ..Default::default()
                 },
             );

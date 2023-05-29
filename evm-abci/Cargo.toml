@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 abci-rs = { version = "0.11.3", features = ["async-api" ] }
 async-trait = "0.1.56"
-ethers = { git = "https://github.com/gakonst/ethers-rs", rev = "1f69ec767927e994e3607c2f8fe0a2c020d17220" }
+ethers = { version = "2.0.4" }
 eyre = "0.6.8"
 hex = "0.4.3"
 serde_json = "1.0.82"
@@ -22,8 +22,7 @@ clap = { version = "3.0.10", features = [
     "wrap_help",
 ] }
 clap_complete = "3.0.4"
-foundry-evm = { git = "https://github.com/foundry-rs/foundry", rev = "028e8884a1319987db1b2d9672ebf4ef922a524b" }
-anvil = { git = "https://github.com/foundry-rs/foundry", rev = "028e8884a1319987db1b2d9672ebf4ef922a524b" }
+foundry-evm = { git = "https://github.com/foundry-rs/foundry" }
 serde = { version = "1.0.138", features = ["derive"] }
 reqwest = "0.11.11"
 tracing = "0.1.35"

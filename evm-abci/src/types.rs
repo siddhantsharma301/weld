@@ -1,4 +1,3 @@
-use ethers::prelude::*;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -11,13 +10,25 @@ use abci::{
     types::*,
 };
 
-use anvil::eth::backend::db::StateDb as AnvilDb;
-use foundry_evm::revm::{
-    self,
-    db::{CacheDB, EmptyDB},
-    CreateScheme, Database, DatabaseCommit, Env, Log as RevmLog, Return, TransactOut, TransactTo,
-    TxEnv,
+use ethers::{types::{
+    U256, Address, TransactionRequest, NameOrAddress
+}, solc::artifacts::Return};
+
+use foundry_evm::{
+    revm::{
+        self,
+        db::{
+            CacheDB, EmptyDB
+        },
+        primitives::{
+            CreateScheme, Env, Log as RevmLog, ResultAndState, TransactTo, EVMError,
+        },
+        Database, DatabaseCommit,
+    // Return, TransactOut,
+    },
+    executor::TxEnv
 };
+use eyre::Result;
 
 /// The app's state, containing a Revm DB.
 // TODO: Should we instead try to replace this with Anvil and implement traits for it?
@@ -29,12 +40,12 @@ pub struct State<Db> {
     pub env: Env,
 }
 
-impl Default for State<AnvilDb<EmptyDB>> {
+impl Default for State<CacheDB<EmptyDB>> {
     fn default() -> Self {
         Self {
             block_height: 0,
             app_hash: Vec::new(),
-            db: AnvilDb::new(EmptyDB()),
+            db: CacheDB::new(EmptyDB()),
             env: Default::default(),
         }
     }
@@ -44,7 +55,7 @@ impl Default for State<AnvilDb<EmptyDB>> {
 pub struct TransactionResult {
     transaction: TransactionRequest,
     exit: Return,
-    out: TransactOut,
+    out: ResultAndState,
     gas: u64,
     logs: Vec<RevmLog>,
 }
@@ -54,39 +65,40 @@ impl<Db: Database + DatabaseCommit> State<Db> {
         &mut self,
         tx: TransactionRequest,
         read_only: bool,
-    ) -> eyre::Result<TransactionResult> {
+    ) -> Result<ResultAndState, EVMError<Db::Error>> {
         let mut evm = revm::EVM::new();
+
+        let chain_id: U256 = self.env.cfg.chain_id.into();
+
         evm.env = self.env.clone();
         evm.env.tx = TxEnv {
-            caller: tx.from.unwrap_or_default(),
+            caller: tx.from.unwrap_or_default().into(),
             transact_to: match tx.to {
-                Some(NameOrAddress::Address(inner)) => TransactTo::Call(inner),
+                Some(NameOrAddress::Address(inner)) => TransactTo::Call(inner.into()),
                 Some(NameOrAddress::Name(_)) => panic!("not allowed"),
                 None => TransactTo::Create(CreateScheme::Create),
             },
             data: tx.data.clone().unwrap_or_default().0,
-            chain_id: Some(self.env.cfg.chain_id.as_u64()),
+            chain_id: Some(chain_id.as_u64()),
             nonce: Some(tx.nonce.unwrap_or_default().as_u64()),
-            value: tx.value.unwrap_or_default(),
-            gas_price: tx.gas_price.unwrap_or_default(),
-            gas_priority_fee: Some(tx.gas_price.unwrap_or_default()),
+            value: tx.value.unwrap_or_default().into(),
+            gas_price: tx.gas_price.unwrap_or_default().into(),
+            gas_priority_fee: Some(tx.gas_price.unwrap_or_default().into()),
             gas_limit: tx.gas.unwrap_or_default().as_u64(),
             access_list: vec![],
         };
         evm.database(&mut self.db);
 
-        let (ret, out, gas, state, logs) = evm.transact();
-        if !read_only {
-            self.db.commit(state);
-        };
-
-        Ok(TransactionResult {
-            transaction: tx,
-            exit: ret,
-            gas,
-            logs,
-            out,
-        })
+        let res = evm.transact();
+        match res {
+            Ok(result) => {
+                if !read_only {
+                    self.db.commit(result.state.clone());
+                };
+                Ok(result)
+            }
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -141,6 +153,7 @@ impl<Db: Clone + Send + Sync + DatabaseCommit + Database> ConsensusTrait for Con
             _ => panic!("not an address"),
         };
 
+        // let result = state.execute(tx, false).await.unwrap();
         let result = state.execute(tx, false).await.unwrap();
         tracing::trace!("executed tx");
 
@@ -248,7 +261,7 @@ impl<Db: Send + Sync + Database + DatabaseCommit> InfoTrait for Info<Db> {
                 let result = state.execute(tx, true).await.unwrap();
                 QueryResponse::Tx(result)
             }
-            Query::Balance(address) => QueryResponse::Balance(state.db.basic(address).balance),
+            Query::Balance(address) => QueryResponse::Balance(state.db.basic(address.into()).balance),
         };
 
         ResponseQuery {
@@ -291,8 +304,8 @@ mod tests {
 
         // give alice some money
         state.db.insert_account_info(
-            alice,
-            revm::AccountInfo {
+            alice.into(),
+            revm::primitives::AccountInfo {
                 balance: val,
                 ..Default::default()
             },
@@ -331,6 +344,6 @@ mod tests {
             .await;
         let res: QueryResponse = serde_json::from_slice(&res.value).unwrap();
         let balance = res.as_balance();
-        assert_eq!(balance, val);
+        assert_eq!(balance, val.into());
     }
 }

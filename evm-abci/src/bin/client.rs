@@ -117,8 +117,8 @@ async fn main() -> Result<()> {
         Paint::new("Alice").bold(),
         Paint::red(format!("conflicting")).bold()
     );
-    send_transaction(host_2, *ALICE, *BOB, value).await?;
-    send_transaction(host_3, *ALICE, *CHARLIE, value).await?;
+    send_transaction(host_2, *ALICE, *BOB, value.into()).await?;
+    send_transaction(host_3, *ALICE, *CHARLIE, value.into()).await?;
 
     println!("---");
 

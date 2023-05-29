@@ -276,8 +276,7 @@ impl<Db: Send + Sync + Database + DatabaseCommit> InfoTrait for Info<Db> {
                 }
             }
             Query::Balance(address) => {
-                let x = state.db.basic(address.into());
-                match x {
+                match state.db.basic(address.into()) {
                     Ok(info) => QueryResponse::Balance(info.unwrap().balance.into()),
                     Err(_) => panic!("no account"),
                 }

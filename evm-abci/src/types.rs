@@ -10,9 +10,9 @@ use abci::{
     types::*,
 };
 
-use ethers::{types::{
+use ethers::types::{
     U256, Address, TransactionRequest, NameOrAddress
-}, solc::artifacts::Return};
+};
 
 use foundry_evm::{
     revm::{
@@ -153,13 +153,20 @@ impl<Db: Clone + Send + Sync + DatabaseCommit + Database> ConsensusTrait for Con
             _ => panic!("not an address"),
         };
 
-        // let result = state.execute(tx, false).await.unwrap();
-        let result = state.execute(tx, false).await.unwrap();
-        tracing::trace!("executed tx");
-
-        ResponseDeliverTx {
-            data: serde_json::to_vec(&result).unwrap(),
-            ..Default::default()
+        match state.execute(tx, false).await {
+            Ok(result) => {
+                tracing::trace!("executed tx");
+                ResponseDeliverTx {
+                    data: serde_json::to_vec(&result).unwrap(),
+                    ..Default::default()
+                }
+            }
+            Err(e) => {
+                ResponseDeliverTx {
+                    data: serde_json::to_vec(&vec![0]).unwrap(),
+                    ..Default::default()
+                }
+            }
         }
     }
 
@@ -296,7 +303,7 @@ mod tests {
 
     #[tokio::test]
     async fn run_and_query_tx() {
-        let val = ethers::utils::parse_units(1, 18).unwrap();
+        let val = ethers::utils::parse_ether(1).unwrap();
         let alice = Address::random();
         let bob = Address::random();
 
@@ -306,7 +313,7 @@ mod tests {
         state.db.insert_account_info(
             alice.into(),
             revm::primitives::AccountInfo {
-                balance: val,
+                balance: val.into(),
                 ..Default::default()
             },
         );

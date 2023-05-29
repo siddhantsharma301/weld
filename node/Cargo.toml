@@ -26,7 +26,6 @@ worker = { git = "https://github.com/asonnino/narwhal/" }
 consensus = { git = "https://github.com/asonnino/narwhal/" }
 
 hex = "0.4.3"
-ethers = { git = "https://github.com/gakonst/ethers-rs", rev = "1f69ec767927e994e3607c2f8fe0a2c020d17220" }
 serde_json = "1.0.82"
 reqwest = "0.11.11"
 

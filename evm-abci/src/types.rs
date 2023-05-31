@@ -10,9 +10,9 @@ use abci::{
     types::*,
 };
 
-use ethers::{types::{
+use ethers::types::{
     U256, Address, TransactionRequest, NameOrAddress
-}, solc::info};
+};
 
 use foundry_evm::{
     revm::{
@@ -21,10 +21,9 @@ use foundry_evm::{
             CacheDB, EmptyDB
         },
         primitives::{
-            CreateScheme, Env, Log as RevmLog, ResultAndState, TransactTo, EVMError,
+            CreateScheme, EVMError, Env, ExecutionResult, ResultAndState, TransactTo,
         },
         Database, DatabaseCommit,
-    // Return, TransactOut,
     },
     executor::TxEnv
 };
@@ -51,21 +50,12 @@ impl Default for State<CacheDB<EmptyDB>> {
     }
 }
 
-// #[derive(serde::Serialize, serde::Deserialize, Debug)]
-// pub struct TransactionResult {
-//     transaction: TransactionRequest,
-//     exit: Return,
-//     out: ResultAndState,
-//     gas: u64,
-//     logs: Vec<RevmLog>,
-// }
-
 impl<Db: Database + DatabaseCommit> State<Db> {
     async fn execute(
         &mut self,
         tx: TransactionRequest,
         read_only: bool,
-    ) -> Result<ResultAndState, EVMError<Db::Error>> {
+    ) -> Result<ExecutionResult, EVMError<Db::Error>> {
         let mut evm = revm::EVM::new();
 
         let chain_id: U256 = self.env.cfg.chain_id.into();
@@ -90,12 +80,13 @@ impl<Db: Database + DatabaseCommit> State<Db> {
         evm.database(&mut self.db);
 
         let res = evm.transact();
+        // Check if res is success
         match res {
             Ok(result) => {
                 if !read_only {
                     self.db.commit(result.state.clone());
                 };
-                Ok(result)
+                Ok(result.result)
             }
             Err(e) => Err(e),
         }
@@ -160,12 +151,13 @@ impl<Db: Clone + Send + Sync + DatabaseCommit + Database> ConsensusTrait for Con
                     data: serde_json::to_vec(&result).unwrap(),
                     ..Default::default()
                 }
-            }
-            Err(e) => {
-                ResponseDeliverTx {
-                    data: serde_json::to_vec(&vec![0]).unwrap(),
-                    ..Default::default()
-                }
+            },
+            Err(_) => {
+                // ResponseDeliverTx {
+                //     data: serde_json::to_vec(&vec![0]).unwrap(),
+                //     ..Default::default()
+                // }
+                panic!("wut");
             }
         }
     }
@@ -221,12 +213,12 @@ pub enum Query {
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 #[allow(clippy::large_enum_variant)]
 pub enum QueryResponse {
-    Tx(ResultAndState),
+    Tx(ExecutionResult),
     Balance(U256),
 }
 
 impl QueryResponse {
-    pub fn as_tx(&self) -> &ResultAndState {
+    pub fn as_tx(&self) -> &ExecutionResult {
         match self {
             QueryResponse::Tx(inner) => inner,
             _ => panic!("not a tx"),
@@ -311,8 +303,8 @@ impl SnapshotTrait for Snapshot {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    // use ethers::prelude::*;
     use foundry_evm::revm::primitives::Eval;
+    use std::matches;
 
     #[tokio::test]
     async fn run_and_query_tx() {
@@ -348,9 +340,9 @@ mod tests {
             tx: serde_json::to_vec(&tx).unwrap(),
         };
         let res = consensus.deliver_tx(req).await;
-        let res: Vec<u8> = serde_json::from_slice(&res.data).unwrap();
-        // tx passed
-        // assert_eq!(res.exit, Eval::Stop);
+        let res: ExecutionResult = serde_json::from_slice(&res.data).unwrap();
+        // // tx passed
+        assert!(matches!(res, ExecutionResult::Success { reason: Eval::Stop, .. }));
 
         // now we query the state for bob's balance
         let info = Info {

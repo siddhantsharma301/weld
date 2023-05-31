@@ -21,7 +21,7 @@ use foundry_evm::{
             CacheDB, EmptyDB
         },
         primitives::{
-            CreateScheme, EVMError, Env, ExecutionResult, ResultAndState, TransactTo,
+            CreateScheme, EVMError, Env, ExecutionResult, TransactTo,
         },
         Database, DatabaseCommit,
     },

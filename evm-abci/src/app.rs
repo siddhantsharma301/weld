@@ -44,7 +44,7 @@ impl App<CacheDB<EmptyDB>> {
                     .parse()
                     .unwrap(),
                 AccountInfo {
-                    balance: ethers::utils::parse_ether(1.5).unwrap().into(),
+                    balance: ethers::utils::parse_ether(0).unwrap().into(),
                     ..Default::default()
                 },
             );
@@ -53,7 +53,7 @@ impl App<CacheDB<EmptyDB>> {
                     .parse()
                     .unwrap(),
                 AccountInfo {
-                    balance: ethers::utils::parse_ether(1.5).unwrap().into(),
+                    balance: ethers::utils::parse_ether(0).unwrap().into(),
                     ..Default::default()
                 },
             );

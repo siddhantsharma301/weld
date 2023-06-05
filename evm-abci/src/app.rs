@@ -39,6 +39,24 @@ impl App<CacheDB<EmptyDB>> {
                     ..Default::default()
                 },
             );
+            state.db.insert_account_info(
+                "0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+                    .parse()
+                    .unwrap(),
+                AccountInfo {
+                    balance: ethers::utils::parse_ether(1.5).unwrap().into(),
+                    ..Default::default()
+                },
+            );
+            state.db.insert_account_info(
+                "0xCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+                    .parse()
+                    .unwrap(),
+                AccountInfo {
+                    balance: ethers::utils::parse_ether(1.5).unwrap().into(),
+                    ..Default::default()
+                },
+            );
         }
 
         let committed_state = Arc::new(Mutex::new(state.clone()));

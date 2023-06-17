@@ -1,4 +1,4 @@
-use abci::async_api::Server;
+use anvil::spawn;
 use evm_abci::App;
 use std::net::SocketAddr;
 
@@ -31,20 +31,24 @@ async fn main() -> eyre::Result<()> {
     let args = Args::parse();
     subscriber();
 
-    let App {
-        consensus,
-        mempool,
-        info,
-        snapshot,
-    } = App::new(args.demo);
-    let server = Server::new(consensus, mempool, info, snapshot);
-
-    dbg!(&args.host);
-    // let addr = args.host.strip_prefix("http://").unwrap_or(&args.host);
     let addr = args.host.parse::<SocketAddr>().unwrap();
 
-    // let addr = SocketAddr::new(addr, args.port);
-    server.run(addr).await?;
+    let node_config = anvil::NodeConfig { 
+        host: Some(addr.ip()), 
+        port: addr.port(),
+        no_mining: true,
+        ..Default::default() };
+
+    let (_, join_handle) = spawn(node_config).await;
+
+    match join_handle.await.unwrap() {
+        Ok(_) => {
+            println!("Successfully listening on address: {}", addr);
+        },
+        Err(err) => {
+            println!("Error: {}", err);
+        }
+    }
 
     Ok(())
 }

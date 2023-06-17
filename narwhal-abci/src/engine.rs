@@ -1,5 +1,9 @@
-use crate::AbciQueryQuery;
+use anvil_core::eth::EthRequest;
+use anvil_rpc::response;
+use ethereum_types::{U256, Address};
+use ethers_providers::{Provider, Http};
 use std::net::SocketAddr;
+use evm_abci::types::RpcRequest;
 use tokio::sync::mpsc::Receiver;
 use tokio::sync::oneshot::Sender as OneShotSender;
 
@@ -22,24 +26,24 @@ use narwhal_primary::Certificate;
 /// 2. Processing Query & Broadcast Tx messages received from the Primary's ABCI Server API and forwarding them to the
 ///    ABCI App via a Tendermint protobuf client.
 pub struct Engine {
-    /// The address of the ABCI app
+    /// The address of the app
     pub app_address: SocketAddr,
     /// The path to the Primary's store, so that the Engine can query each of the Primary's workers
     /// for the data corresponding to a Certificate
     pub store_path: String,
-    /// Messages received from the ABCI Server to be forwarded to the engine.
-    pub rx_abci_queries: Receiver<(OneShotSender<ResponseQuery>, AbciQueryQuery)>,
+    /// Messages received from the RPC Server to be forwarded to the engine.
+    pub rx_abci_queries: Receiver<(OneShotSender<ResponseQuery>, RpcRequest)>,
     /// The last block height, initialized to the application's latest block by default
     pub last_block_height: i64,
-    pub client: AbciClient,
-    pub req_client: AbciClient,
+    pub client: Provider<Http>,
+    pub req_client: Provider<Http>,
 }
 
 impl Engine {
     pub fn new(
         app_address: SocketAddr,
         store_path: &str,
-        rx_abci_queries: Receiver<(OneShotSender<ResponseQuery>, AbciQueryQuery)>,
+        rx_abci_queries: Receiver<(OneShotSender<ResponseQuery>, RpcRequest)>,
     ) -> Self {
         let mut client = ClientBuilder::default().connect(&app_address).unwrap();
 
@@ -49,8 +53,9 @@ impl Engine {
             .unwrap_or_default();
 
         // Instantiate a new client to not be locked in an Info connection
-        let client = ClientBuilder::default().connect(&app_address).unwrap();
-        let req_client = ClientBuilder::default().connect(&app_address).unwrap();
+        let client = Provider::<Http>::try_from(String::from("http://") + &app_address.to_string()).unwrap();
+        let req_client = Provider::<Http>::try_from(String::from("http://") + &app_address.to_string()).unwrap();
+
         Self {
             app_address,
             store_path: store_path.to_string(),
@@ -63,15 +68,15 @@ impl Engine {
 
     /// Receives an ordered list of certificates and apply any application-specific logic.
     pub async fn run(&mut self, mut rx_output: Receiver<Certificate>) -> eyre::Result<()> {
-        self.init_chain()?;
+        // self.init_chain()?;
 
         loop {
             tokio::select! {
                 Some(certificate) = rx_output.recv() => {
-                    self.handle_cert(certificate)?;
+                    self.handle_cert(certificate).await?;
                 },
                 Some((tx, req)) = self.rx_abci_queries.recv() => {
-                    self.handle_abci_query(tx, req)?;
+                    self.handle_rpc_query(tx, req).await?;
                 }
                 else => break,
             }
@@ -82,7 +87,7 @@ impl Engine {
 
     /// On each new certificate, increment the block height to proposed and run through the
     /// BeginBlock -> DeliverTx for each tx in the certificate -> EndBlock -> Commit event loop.
-    fn handle_cert(&mut self, certificate: Certificate) -> eyre::Result<()> {
+    async fn handle_cert(&mut self, certificate: Certificate) -> eyre::Result<()> {
         // increment block
         let proposed_block_height = self.last_block_height + 1;
 
@@ -90,10 +95,8 @@ impl Engine {
         self.last_block_height = proposed_block_height;
 
         // drive the app through the event loop
-        self.begin_block(proposed_block_height)?;
-        self.reconstruct_and_deliver_txs(certificate)?;
-        self.end_block(proposed_block_height)?;
-        self.commit()?;
+        let tx_count = self.reconstruct_and_deliver_txs(certificate).await?;
+        self.commit(tx_count)?;
         Ok(())
     }
 
@@ -102,23 +105,41 @@ impl Engine {
     /// Primary and then to the client.
     ///
     /// Client => Primary => handle_cert => ABCI App => Primary => Client
-    fn handle_abci_query(
+    async fn handle_rpc_query(
         &mut self,
         tx: OneShotSender<ResponseQuery>,
-        req: AbciQueryQuery,
+        req: RpcRequest,
     ) -> eyre::Result<()> {
-        let req_height = req.height.unwrap_or(0);
-        let req_prove = req.prove.unwrap_or(false);
+        let params = serde_json::from_str(&req.params)?;
+        let request_result = serde_json::from_value::<EthRequest>(serde_json::json!({
+            "method": req.method.clone(),
+            "params": serde_json::from_str(&req.params)?
+        }));
 
-        let resp = self.req_client.query(RequestQuery {
-            data: req.data.into(),
-            path: req.path,
-            height: req_height as i64,
-            prove: req_prove,
-        })?;
-
-        if let Err(err) = tx.send(resp) {
-            eyre::bail!("{:?}", err);
+        let response = match request_result {
+            Ok(eth_request) => {
+                match eth_request {
+                    EthRequest::EthGetBalance(_, _) => {
+                        let result: U256 = self.client.request(req.method.clone().as_str(), params).await.unwrap();
+                        serde_json::to_vec(&result).map_err(Into::into)
+                    },
+                    EthRequest::EthAccounts(params) => {
+                        let result: Vec<Address> = self.client.request(req.method.clone().as_str(), params).await.unwrap();
+                        serde_json::to_vec(&result).map_err(Into::into)
+                    },
+                    EthRequest::EthGetUnclesCountByHash(_) => {
+                        let result: U256 = self.client.request(req.method.clone().as_str(), params).await.unwrap();
+                        serde_json::to_vec(&result).map_err(Into::into)
+                    }
+                    _ => eyre::bail!("lol we don't support this")
+                }        
+            },
+            Err(err) => Err(err)
+        };
+        if let Ok(response) = response {
+            if let Err (err) = tx.send(ResponseQuery{value: response, ..Default::default()}) {
+                eyre::bail!("{:?}", err);
+            }    
         }
         Ok(())
     }
@@ -197,58 +218,14 @@ impl Engine {
 
 // Tendermint Lifecycle Helpers
 impl Engine {
-    /// Calls the `InitChain` hook on the app, ignores "already initialized" errors.
-    pub fn init_chain(&mut self) -> eyre::Result<()> {
-        let mut client = ClientBuilder::default().connect(&self.app_address)?;
-        match client.init_chain(RequestInitChain::default()) {
-            Ok(_) => {}
-            Err(err) => {
-                // ignore errors about the chain being uninitialized
-                if err.to_string().contains("already initialized") {
-                    log::warn!("{}", err);
-                    return Ok(());
-                }
-                eyre::bail!(err)
-            }
-        };
-        Ok(())
-    }
-
-    /// Calls the `BeginBlock` hook on the ABCI app. For now, it just makes a request with
-    /// the new block height.
-    // If we wanted to, we could add additional arguments to be forwarded from the Consensus
-    // to the App logic on the beginning of each block.
-    fn begin_block(&mut self, height: i64) -> eyre::Result<()> {
-        let req = RequestBeginBlock {
-            header: Some(Header {
-                height,
-                ..Default::default()
-            }),
-            ..Default::default()
-        };
-
-        self.client.begin_block(req)?;
-        Ok(())
-    }
-
     /// Calls the `DeliverTx` hook on the ABCI app.
     fn deliver_tx(&mut self, tx: Transaction) -> eyre::Result<()> {
         self.client.deliver_tx(RequestDeliverTx { tx })?;
         Ok(())
     }
 
-    /// Calls the `EndBlock` hook on the ABCI app. For now, it just makes a request with
-    /// the proposed block height.
-    // If we wanted to, we could add additional arguments to be forwarded from the Consensus
-    // to the App logic on the end of each block.
-    fn end_block(&mut self, height: i64) -> eyre::Result<()> {
-        let req = RequestEndBlock { height };
-        self.client.end_block(req)?;
-        Ok(())
-    }
-
     /// Calls the `Commit` hook on the ABCI app.
-    fn commit(&mut self) -> eyre::Result<()> {
+    fn commit(&mut self, tx_count: usize) -> eyre::Result<()> {
         self.client.commit()?;
         Ok(())
     }

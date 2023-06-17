@@ -3243,6 +3243,7 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "crypto",
+ "evm-abci",
  "eyre",
  "futures",
  "hex",

@@ -1,9 +1,11 @@
 use anvil_core::eth::EthRequest;
-use anvil_rpc::response;
-use ethereum_types::{U256, Address};
-use ethers_providers::{Provider, Http};
-use std::net::SocketAddr;
+use ethers_core::types::transaction::request::TransactionRequest;
+use ethers_providers::{Http, Provider, Middleware};
+// use anvil_rpc::response::ResponseResult;
+use ethereum_types::{Address, U256};
+// use ethers_providers::{Http, Provider, ProviderError, Middleware};
 use evm_abci::types::RpcRequest;
+use std::net::SocketAddr;
 use tokio::sync::mpsc::Receiver;
 use tokio::sync::oneshot::Sender as OneShotSender;
 
@@ -53,8 +55,10 @@ impl Engine {
             .unwrap_or_default();
 
         // Instantiate a new client to not be locked in an Info connection
-        let client = Provider::<Http>::try_from(String::from("http://") + &app_address.to_string()).unwrap();
-        let req_client = Provider::<Http>::try_from(String::from("http://") + &app_address.to_string()).unwrap();
+        let client =
+            Provider::<Http>::try_from(String::from("http://") + &app_address.to_string()).unwrap();
+        let req_client =
+            Provider::<Http>::try_from(String::from("http://") + &app_address.to_string()).unwrap();
 
         Self {
             app_address,
@@ -96,7 +100,7 @@ impl Engine {
 
         // drive the app through the event loop
         let tx_count = self.reconstruct_and_deliver_txs(certificate).await?;
-        self.commit(tx_count)?;
+        self.commit(tx_count).await?;
         Ok(())
     }
 
@@ -115,6 +119,39 @@ impl Engine {
             "method": req.method.clone(),
             "params": serde_json::from_str(&req.params)?
         }));
+
+        // match request_result {
+        //     Ok(_) => {
+        //         let res = self
+        //             .req_client
+        //             .request::<ResponseResult, ResponseResult>(
+        //                 req.method.clone().as_str(),
+        //                 params.clone(),
+        //             )
+        //             .await?;
+        //         match res {
+        //             ResponseResult::Success(result) => {
+        //                 if let Err(err) = tx.send(ResponseQuery {
+        //                     value: serde_json::to_vec(&result).unwrap().into(),
+        //                     ..Default::default()
+        //                 }) {
+        //                     eyre::bail!("{:?}", err);
+        //                 }
+        //             },
+        //             ResponseResult::Error(err) => {
+        //                 if let Err(err) = tx.send(ResponseQuery {
+        //                     value: serde_json::to_vec(&err).unwrap().into(),
+        //                     ..Default::default()
+        //                 }) {
+        //                     eyre::bail!("{:?}", err);
+        //                 }
+        //             }
+        //         }
+        //     },
+        //     Err(err) => {
+        //         eyre::bail!("{:?}", err);
+        //     }
+        // }
 
         let response = match request_result {
             Ok(eth_request) => {
@@ -167,14 +204,13 @@ impl Engine {
     /// Calls DeliverTx on the ABCI app
     /// Deserializes a raw abtch as `WorkerMesssage::Batch` and proceeds to deliver
     /// each transaction over the DeliverTx API.
-    fn deliver_batch(&mut self, batch: Vec<u8>) -> eyre::Result<()> {
+    async fn deliver_batch(&mut self, batch: Vec<u8>) -> eyre::Result<()> {
         // Deserialize and parse the message.
         match bincode::deserialize(&batch) {
             Ok(WorkerMessage::Batch(batch)) => {
-                batch.into_iter().try_for_each(|tx| {
-                    self.deliver_tx(tx)?;
-                    Ok::<_, eyre::Error>(())
-                })?;
+                for tx in batch {
+                    self.deliver_tx(tx).await.map_err(|e| eyre::eyre!(e))?;
+                }
             }
             _ => eyre::bail!("unrecognized message format"),
         };
@@ -183,12 +219,7 @@ impl Engine {
 
     /// Reconstructs the batch corresponding to the provided Primary's certificate from the Workers' stores
     /// and proceeds to deliver each tx to the App over ABCI's DeliverTx endpoint.
-    fn reconstruct_and_deliver_txs(&mut self, certificate: Certificate) -> eyre::Result<()> {
-        // Try reconstructing the batches from the cert digests
-        //
-        // NB:
-        // This is maybe a false positive by Clippy, without the `collect` the Iterator fails
-        // iterator fails to compile because we're mutably borrowing in the `try_for_each`
+    async fn reconstruct_and_deliver_txs(&mut self, certificate: Certificate) -> eyre::Result<()> {
         // when we've already immutably borrowed in the `.map`.
         #[allow(clippy::needless_collect)]
         let batches = certificate
@@ -197,15 +228,14 @@ impl Engine {
             .into_iter()
             .map(|(digest, worker_id)| self.reconstruct_batch(digest, worker_id))
             .collect::<Vec<_>>();
-
+    
         // Deliver
-        batches.into_iter().try_for_each(|batch| {
+        for batch in batches {
             // this will throw an error if the deserialization failed anywhere
-            let batch = batch?;
-            self.deliver_batch(batch)?;
-            Ok::<_, eyre::Error>(())
-        })?;
-
+            let batch = batch.map_err(|e| eyre::eyre!(e))?;
+            self.deliver_batch(batch).await.map_err(|e| eyre::eyre!(e))?;
+        }
+    
         Ok(())
     }
 
@@ -219,14 +249,15 @@ impl Engine {
 // Tendermint Lifecycle Helpers
 impl Engine {
     /// Calls the `DeliverTx` hook on the ABCI app.
-    fn deliver_tx(&mut self, tx: Transaction) -> eyre::Result<()> {
-        self.client.deliver_tx(RequestDeliverTx { tx })?;
+    async fn deliver_tx(&mut self, tx: Transaction) -> eyre::Result<()> {
+        let bytes = serde_json::from_slice::<TransactionRequest>(&tx).unwrap();
+        self.client.send_transaction(bytes, None).await?;
         Ok(())
     }
 
     /// Calls the `Commit` hook on the ABCI app.
-    fn commit(&mut self, tx_count: usize) -> eyre::Result<()> {
-        self.client.commit()?;
+    async fn commit(&mut self, tx_count: usize) -> eyre::Result<()> {
+        self.client.request("mine", );
         Ok(())
     }
 }

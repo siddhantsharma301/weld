@@ -49,7 +49,7 @@ impl RpcApi<ResponseQuery> {
                         self.mempool_address
                     ))
                     .unwrap();
-                let mut transport = Framed::new(stream, LengthDelimitedCodec::new());
+                let mut transport: Framed<TcpStream, LengthDelimitedCodec> = Framed::new(stream, LengthDelimitedCodec::new());
 
                 if let Err(e) = transport.send(req.tx.clone().into()).await {
                     Ok::<_, Rejection>(format!("ERROR IN: broadcast_tx: {:?}. Err: {}", req, e))

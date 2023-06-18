@@ -5,6 +5,7 @@ use ethers_providers::{Http, Provider, Middleware};
 use ethereum_types::{Address, U256};
 // use ethers_providers::{Http, Provider, ProviderError, Middleware};
 use evm_abci::types::RpcRequest;
+use warp::body::json;
 use std::net::SocketAddr;
 use tokio::sync::mpsc::Receiver;
 use tokio::sync::oneshot::Sender as OneShotSender;
@@ -204,22 +205,24 @@ impl Engine {
     /// Calls DeliverTx on the ABCI app
     /// Deserializes a raw abtch as `WorkerMesssage::Batch` and proceeds to deliver
     /// each transaction over the DeliverTx API.
-    async fn deliver_batch(&mut self, batch: Vec<u8>) -> eyre::Result<()> {
+    async fn deliver_batch(&mut self, batch: Vec<u8>) -> eyre::Result<usize> {
         // Deserialize and parse the message.
+        let mut count = 0;
         match bincode::deserialize(&batch) {
             Ok(WorkerMessage::Batch(batch)) => {
                 for tx in batch {
                     self.deliver_tx(tx).await.map_err(|e| eyre::eyre!(e))?;
+                    count += 1;
                 }
             }
             _ => eyre::bail!("unrecognized message format"),
         };
-        Ok(())
+        Ok(count)
     }
 
     /// Reconstructs the batch corresponding to the provided Primary's certificate from the Workers' stores
     /// and proceeds to deliver each tx to the App over ABCI's DeliverTx endpoint.
-    async fn reconstruct_and_deliver_txs(&mut self, certificate: Certificate) -> eyre::Result<()> {
+    async fn reconstruct_and_deliver_txs(&mut self, certificate: Certificate) -> eyre::Result<usize> {
         // when we've already immutably borrowed in the `.map`.
         #[allow(clippy::needless_collect)]
         let batches = certificate
@@ -230,13 +233,14 @@ impl Engine {
             .collect::<Vec<_>>();
     
         // Deliver
+        let mut total_count = 0;
         for batch in batches {
             // this will throw an error if the deserialization failed anywhere
             let batch = batch.map_err(|e| eyre::eyre!(e))?;
-            self.deliver_batch(batch).await.map_err(|e| eyre::eyre!(e))?;
+            total_count += self.deliver_batch(batch).await.map_err(|e| eyre::eyre!(e))?;
         }
     
-        Ok(())
+        Ok(total_count)
     }
 
     /// Helper function for getting the database handle to a worker associated
@@ -257,7 +261,7 @@ impl Engine {
 
     /// Calls the `Commit` hook on the ABCI app.
     async fn commit(&mut self, tx_count: usize) -> eyre::Result<()> {
-        self.client.request("mine", );
+        self.client.request("mine", vec![tx_count, 0]).await?;
         Ok(())
     }
 }

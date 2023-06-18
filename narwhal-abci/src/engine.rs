@@ -1,22 +1,14 @@
 use anvil_core::eth::EthRequest;
 use ethers_core::types::transaction::request::TransactionRequest;
 use ethers_providers::{Http, Provider, Middleware};
-// use anvil_rpc::response::ResponseResult;
 use ethereum_types::{Address, U256};
-// use ethers_providers::{Http, Provider, ProviderError, Middleware};
 use evm_abci::types::RpcRequest;
-use warp::body::json;
 use std::net::SocketAddr;
 use tokio::sync::mpsc::Receiver;
 use tokio::sync::oneshot::Sender as OneShotSender;
 
 // Tendermint Types
-use tendermint_abci::{Client as AbciClient, ClientBuilder};
-use tendermint_proto::abci::{
-    RequestBeginBlock, RequestDeliverTx, RequestEndBlock, RequestInfo, RequestInitChain,
-    RequestQuery, ResponseQuery,
-};
-use tendermint_proto::types::Header;
+use tendermint_proto::abci::ResponseQuery;
 
 // Narwhal types
 use narwhal_crypto::Digest;
@@ -37,7 +29,6 @@ pub struct Engine {
     /// Messages received from the RPC Server to be forwarded to the engine.
     pub rx_abci_queries: Receiver<(OneShotSender<ResponseQuery>, RpcRequest)>,
     /// The last block height, initialized to the application's latest block by default
-    pub last_block_height: i64,
     pub client: Provider<Http>,
     pub req_client: Provider<Http>,
 }
@@ -48,12 +39,12 @@ impl Engine {
         store_path: &str,
         rx_abci_queries: Receiver<(OneShotSender<ResponseQuery>, RpcRequest)>,
     ) -> Self {
-        let mut client = ClientBuilder::default().connect(&app_address).unwrap();
+        // let mut client = ClientBuilder::default().connect(&app_address).unwrap();
 
-        let last_block_height = client
-            .info(RequestInfo::default())
-            .map(|res| res.last_block_height)
-            .unwrap_or_default();
+        // let last_block_height = client
+        //     .info(RequestInfo::default())
+        //     .map(|res| res.last_block_height)
+        //     .unwrap_or_default();
 
         // Instantiate a new client to not be locked in an Info connection
         let client =
@@ -65,7 +56,6 @@ impl Engine {
             app_address,
             store_path: store_path.to_string(),
             rx_abci_queries,
-            last_block_height,
             client,
             req_client,
         }
@@ -94,13 +84,14 @@ impl Engine {
     /// BeginBlock -> DeliverTx for each tx in the certificate -> EndBlock -> Commit event loop.
     async fn handle_cert(&mut self, certificate: Certificate) -> eyre::Result<()> {
         // increment block
-        let proposed_block_height = self.last_block_height + 1;
+        // let proposed_block_height = self.last_block_height + 1;
 
-        // save it for next time
-        self.last_block_height = proposed_block_height;
+        // // save it for next time
+        // self.last_block_height = proposed_block_height;
 
         // drive the app through the event loop
         let tx_count = self.reconstruct_and_deliver_txs(certificate).await?;
+        log::info!("Tx count {}", tx_count);
         self.commit(tx_count).await?;
         Ok(())
     }
@@ -208,14 +199,16 @@ impl Engine {
     async fn deliver_batch(&mut self, batch: Vec<u8>) -> eyre::Result<usize> {
         // Deserialize and parse the message.
         let mut count = 0;
+        log::info!("Batch: {:?}", batch);
         match bincode::deserialize(&batch) {
             Ok(WorkerMessage::Batch(batch)) => {
                 for tx in batch {
-                    self.deliver_tx(tx).await.map_err(|e| eyre::eyre!(e))?;
+                    let res = self.deliver_tx(tx).await.map_err(|e| eyre::eyre!(e));
+                    log::error!("Response: {:?}", res);
                     count += 1;
                 }
             }
-            _ => eyre::bail!("unrecognized message format"),
+            _ => { log::error!("wtf"); eyre::bail!("unrecognized message format") } ,
         };
         Ok(count)
     }
@@ -234,6 +227,7 @@ impl Engine {
     
         // Deliver
         let mut total_count = 0;
+        log::info!("Batches: {:?}", batches);
         for batch in batches {
             // this will throw an error if the deserialization failed anywhere
             let batch = batch.map_err(|e| eyre::eyre!(e))?;
@@ -261,7 +255,7 @@ impl Engine {
 
     /// Calls the `Commit` hook on the ABCI app.
     async fn commit(&mut self, tx_count: usize) -> eyre::Result<()> {
-        self.client.request("mine", vec![tx_count, 0]).await?;
+        self.client.request("anvil_mine", vec![U256::from(tx_count), U256::from(0)]).await?;
         Ok(())
     }
 }

@@ -255,6 +255,7 @@ impl Engine {
     async fn deliver_tx(&mut self, tx: Transaction) -> eyre::Result<()> {
         let bytes = serde_json::from_slice::<TransactionRequest>(&tx).unwrap();
         self.client.send_transaction(bytes, None).await?;
+        log::info!("I delivered a tx woooo");
         Ok(())
     }
 

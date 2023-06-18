@@ -216,14 +216,19 @@ impl Engine {
     /// Reconstructs the batch corresponding to the provided Primary's certificate from the Workers' stores
     /// and proceeds to deliver each tx to the App over ABCI's DeliverTx endpoint.
     async fn reconstruct_and_deliver_txs(&mut self, certificate: Certificate) -> eyre::Result<usize> {
-        // when we've already immutably borrowed in the `.map`.
+        // when we've already immutably borrowed in the `.map`.)
         #[allow(clippy::needless_collect)]
-        let batches = certificate
+        let batches = certificate.clone()
             .header
             .payload
             .into_iter()
-            .map(|(digest, worker_id)| self.reconstruct_batch(digest, worker_id))
+            .map(|(digest, worker_id)| { 
+                let res = self.reconstruct_batch(digest, worker_id);
+                log::error!("Reconstruct batch: {:?}", res);
+                res
+            })
             .collect::<Vec<_>>();
+        log::info!("Header is {:?}", certificate.header.payload);
     
         // Deliver
         let mut total_count = 0;

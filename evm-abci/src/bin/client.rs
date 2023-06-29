@@ -25,9 +25,7 @@ async fn query_balance(host: &str, address: Address) -> Result<()> {
         .await?;
 
     let val = res.bytes().await?;
-    println!("val daddy: {:?}", val);
     let val: QueryResponse = QueryResponse::Balance(serde_json::from_slice(&val)?);
-    println!("query response val daddy: {:?}", val);
     let val = val.as_balance();
     let readable_value = get_readable_eth_value(val)?;
     println!(
@@ -93,6 +91,10 @@ async fn main() -> Result<()> {
     let value = ethers::utils::parse_units(1, 18)?;
 
     let addresses = get_accounts(host_1).await?;
+
+    send_transaction(host_2, addresses[0], addresses[8], ethers::utils::parse_units(98.5, 18)?.into()).await?;
+
+    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
     // TODO: Query initial balances from host_1
     query_balance(host_1, addresses[0]).await?;

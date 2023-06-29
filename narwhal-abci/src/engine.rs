@@ -109,7 +109,7 @@ impl Engine {
     ) -> eyre::Result<()> {
         // let params = serde_json::from_str(&req.params);
         // log::warn!("params here daddy: {:?}", params);
-        let request_result = serde_json::from_value::<EthRequest>(serde_json::json!({
+        let request_json = serde_json::from_value::<EthRequest>(serde_json::json!({
             "method": req.method.clone(),
             "params": serde_json::from_str::<Vec<String>>(&req.params)?
         }));
@@ -147,7 +147,7 @@ impl Engine {
         //     }
         // }
 
-        let response = match request_result {
+        let response = match request_json {
             Ok(eth_request) => {
                 match eth_request {
                     EthRequest::EthGetBalance(_, _) => {

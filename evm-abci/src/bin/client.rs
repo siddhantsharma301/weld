@@ -1,29 +1,10 @@
+use anvil_rpc::request::RequestParams;
 use ethers::prelude::*;
 use evm_abci::types::{Query, QueryResponse};
 use eyre::Result;
 use once_cell::sync::Lazy;
-use std::collections::HashMap;
+use std::{collections::HashMap, error::Error};
 use yansi::{Paint};
-
-static ALICE: Lazy<Address> = Lazy::new(||{
-    "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".parse::<Address>().unwrap()
-});
-static BOB: Lazy<Address> = Lazy::new(||{
-    "0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB".parse::<Address>().unwrap()
-});
-static CHARLIE: Lazy<Address> = Lazy::new(||{
-    "0xCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC".parse::<Address>().unwrap()
-});
-
-static ADDRESS_TO_NAME: Lazy<HashMap<Address, &'static str>> = Lazy::new(||{
-    let mut address_to_name = HashMap::new();
-    address_to_name.insert(*ALICE, "Alice");
-    address_to_name.insert(*BOB, "Bob");
-    address_to_name.insert(*CHARLIE, "Charlie");
-
-    address_to_name
-});
-
 
 fn get_readable_eth_value(value: U256) -> Result<f64> {
     let value_string = ethers::utils::format_units(value, "ether")?;
@@ -31,52 +12,55 @@ fn get_readable_eth_value(value: U256) -> Result<f64> {
 }
 
 async fn query_balance(host: &str, address: Address) -> Result<()> {
-    let query = Query::Balance(address);
-    let query = serde_json::to_string(&query)?;
-
     let client = reqwest::Client::new();
+    println!("Querying balance for {}", address);
+
+    let params = serde_json::to_string(&RequestParams::Array(vec![serde_json::to_value(address)?, serde_json::to_value("latest")?]))?;
+    println!("Params: {}", params);
+
     let res = client
-        .get(format!("{}/abci_query", host))
-        .query(&[("data", query), ("path", "".to_string())])
+        .get(format!("{}/rpc_query", host))
+        .query(&[("method", "eth_getBalance"), ("params", params.as_str())])
         .send()
         .await?;
 
     let val = res.bytes().await?;
-    let val: QueryResponse = serde_json::from_slice(&val)?;
+    let val: QueryResponse = QueryResponse::Balance(serde_json::from_slice(&val)?);
     let val = val.as_balance();
     let readable_value = get_readable_eth_value(val)?;
-    let name = ADDRESS_TO_NAME.get(&address).unwrap();
     println!(
         "{}'s balance: {}",
-        Paint::new(name).bold(),
+        Paint::new(address).bold(),
         Paint::green(format!("{} ETH", readable_value)).bold()
     );
     Ok(())
 }
 
-async fn query_all_balances(host: &str) -> Result<()> {
-    println!(
-        "Querying balances from {}:",
-        Paint::new(format!("{}", host)).bold()
-    );
+async fn get_accounts(host: &str) -> Result<Vec<Address>> {
+    let client = reqwest::Client::new();
+    let params = serde_json::to_string(&RequestParams::Array(vec![]))?;
+    let res = client
+        .get(format!("{}/rpc_query", host))
+        .query(&[("method", "eth_accounts"), ("params", params.as_str())])
+        .send()
+        .await?;
 
-    query_balance(host, *ALICE).await?;
-    query_balance(host, *BOB).await?;
-    query_balance(host, *CHARLIE).await?;
-
-    Ok(())
+    let val = res.bytes().await?;
+    let addresses_result = serde_json::from_slice(&val).map_err(Into::into);
+    match addresses_result {
+        Ok(addresses) => Ok(addresses),
+        Err(err) => Err(err),
+    }
 }
 
 async fn send_transaction(host: &str, from: Address, to: Address, value: U256) -> Result<()> {
-    let from_name = ADDRESS_TO_NAME.get(&from).unwrap();
-    let to_name = ADDRESS_TO_NAME.get(&to).unwrap();
     let readable_value = get_readable_eth_value(value)?;
     println!(
         "{} sends TX to {} transferring {} to {}...",
-        Paint::new(from_name).bold(),
+        Paint::new(from).bold(),
         Paint::red(host).bold(),
         Paint::new(format!("{} ETH", readable_value)).bold(),
-        Paint::red(to_name).bold()
+        Paint::red(to).bold()
     );
 
     let tx = TransactionRequest::new()
@@ -106,8 +90,16 @@ async fn main() -> Result<()> {
 
     let value = ethers::utils::parse_units(1, 18)?;
 
-    // Query initial balances from host_1
-    query_all_balances(host_1).await?;
+    let addresses = get_accounts(host_1).await?;
+
+    send_transaction(host_2, addresses[0], addresses[8], ethers::utils::parse_units(98.5, 18)?.into()).await?;
+
+    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+
+    // TODO: Query initial balances from host_1
+    query_balance(host_1, addresses[0]).await?;
+    query_balance(host_1, addresses[1]).await?;
+    query_balance(host_1, addresses[2]).await?;
 
     println!("---");
 
@@ -117,8 +109,8 @@ async fn main() -> Result<()> {
         Paint::new("Alice").bold(),
         Paint::red(format!("conflicting")).bold()
     );
-    send_transaction(host_2, *ALICE, *BOB, value.into()).await?;
-    send_transaction(host_3, *ALICE, *CHARLIE, value.into()).await?;
+    send_transaction(host_2, addresses[0], addresses[1], value.into()).await?;
+    send_transaction(host_3, addresses[0], addresses[2], value.into()).await?;
 
     println!("---");
 
@@ -128,13 +120,17 @@ async fn main() -> Result<()> {
 
     println!("---");
 
-    // Query final balances from host_2
-    query_all_balances(host_2).await?;
+    // TODO: Query final balances from host_2
+    query_balance(host_2, addresses[0]).await?;
+    query_balance(host_2, addresses[1]).await?;
+    query_balance(host_2, addresses[2]).await?;
 
     println!("---");
 
-    // Query final balances from host_3
-    query_all_balances(host_3).await?;
-
+    // TODO: Query final balances from host_3
+    query_balance(host_3, addresses[0]).await?;
+    query_balance(host_3, addresses[1]).await?;
+    query_balance(host_3, addresses[2]).await?;
+    
     Ok(())
 }

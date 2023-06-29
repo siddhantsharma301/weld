@@ -10,9 +10,9 @@ use abci::{
     types::*,
 };
 
-use ethers::types::{
+use ethers::{types::{
     U256, Address, TransactionRequest, NameOrAddress
-};
+}};
 
 use foundry_evm::{
     revm::{
@@ -23,7 +23,7 @@ use foundry_evm::{
         primitives::{
             CreateScheme, EVMError, Env, ExecutionResult, TransactTo,
         },
-        Database, DatabaseCommit,
+        Database, DatabaseCommit
     },
     executor::TxEnv
 };
@@ -201,6 +201,12 @@ impl MempoolTrait for Mempool {
 #[derive(Debug, Clone)]
 pub struct Info<Db> {
     pub state: Arc<Mutex<State<Db>>>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct RpcRequest {
+    pub method: String,
+    pub params: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug)]

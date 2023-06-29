@@ -1,5 +1,5 @@
-mod abci_server;
-pub use abci_server::AbciApi;
+mod rpc_server;
+pub use rpc_server::RpcApi;
 
 mod engine;
 pub use engine::Engine;

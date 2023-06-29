@@ -12,19 +12,21 @@ use warp::{Filter, Rejection};
 
 use std::net::SocketAddr;
 
+use evm_abci::types::RpcRequest;
+
 /// Simple HTTP API server which listens to messages on:
 /// * `broadcast_tx`: forwards them to Narwhal's mempool/worker socket, which will proceed to put
 /// it in the consensus process and eventually forward it to the application.
 /// * `abci_query`: forwards them over a channel to a handler (typically the application).
-pub struct AbciApi<T> {
+pub struct RpcApi<T> {
     mempool_address: SocketAddr,
-    tx: Sender<(OneShotSender<T>, AbciQueryQuery)>,
+    tx: Sender<(OneShotSender<T>, RpcRequest)>,
 }
 
-impl<T: Send + Sync + std::fmt::Debug> AbciApi<T> {
+impl<T: Send + Sync + std::fmt::Debug> RpcApi<T> {
     pub fn new(
         mempool_address: SocketAddr,
-        tx: Sender<(OneShotSender<T>, AbciQueryQuery)>,
+        tx: Sender<(OneShotSender<T>, RpcRequest)>,
     ) -> Self {
         Self {
             mempool_address,
@@ -33,7 +35,7 @@ impl<T: Send + Sync + std::fmt::Debug> AbciApi<T> {
     }
 }
 
-impl AbciApi<ResponseQuery> {
+impl RpcApi<ResponseQuery> {
     pub fn routes(self) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
         let route_broadcast_tx = warp::path("broadcast_tx")
             .and(warp::query::<BroadcastTxQuery>())
@@ -47,7 +49,7 @@ impl AbciApi<ResponseQuery> {
                         self.mempool_address
                     ))
                     .unwrap();
-                let mut transport = Framed::new(stream, LengthDelimitedCodec::new());
+                let mut transport: Framed<TcpStream, LengthDelimitedCodec> = Framed::new(stream, LengthDelimitedCodec::new());
 
                 if let Err(e) = transport.send(req.tx.clone().into()).await {
                     Ok::<_, Rejection>(format!("ERROR IN: broadcast_tx: {:?}. Err: {}", req, e))
@@ -56,17 +58,17 @@ impl AbciApi<ResponseQuery> {
                 }
             });
 
-        let route_abci_query = warp::path("abci_query")
-            .and(warp::query::<AbciQueryQuery>())
-            .and_then(move |req: AbciQueryQuery| {
-                let tx_abci_queries = self.tx.clone();
+        let route_rpc_query = warp::path("rpc_query")
+            .and(warp::query::<RpcRequest>())
+            .and_then(move |req: RpcRequest| {
+                let rpc_query = self.tx.clone();
                 async move {
-                    log::warn!("abci_query: {:?}", req);
+                    log::warn!("rpc_query: {:?}", req);
 
                     let (tx, rx) = oneshot_channel();
-                    match tx_abci_queries.send((tx, req.clone())).await {
-                        Ok(_) => {}
-                        Err(err) => log::error!("Error forwarding abci query: {}", err),
+                    match rpc_query.send((tx, req.clone())).await {
+                        Ok(xyz) => {log::warn!("rpc_query: sent {:?}", xyz);}
+                        Err(err) => log::error!("Error forwarding rpc query: {}", err),
                     };
                     let resp = rx.await.unwrap();
                     // Return the value
@@ -74,6 +76,6 @@ impl AbciApi<ResponseQuery> {
                 }
             });
 
-        route_broadcast_tx.or(route_abci_query)
+        route_broadcast_tx.or(route_rpc_query)
     }
 }

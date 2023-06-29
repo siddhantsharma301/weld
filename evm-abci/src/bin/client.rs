@@ -26,7 +26,8 @@ async fn query_balance(host: &str, address: Address) -> Result<()> {
 
     let val = res.bytes().await?;
     println!("val daddy: {:?}", val);
-    let val: QueryResponse = serde_json::from_slice(&val)?;
+    let val: QueryResponse = QueryResponse::Balance(serde_json::from_slice(&val)?);
+    println!("query response val daddy: {:?}", val);
     let val = val.as_balance();
     let readable_value = get_readable_eth_value(val)?;
     println!(

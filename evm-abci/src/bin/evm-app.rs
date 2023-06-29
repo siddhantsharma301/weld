@@ -29,7 +29,7 @@ pub fn subscriber() {
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     let args = Args::parse();
-    subscriber();
+    // subscriber();
 
     let addr = args.host.parse::<SocketAddr>().unwrap();
 

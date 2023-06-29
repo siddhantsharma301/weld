@@ -67,7 +67,7 @@ impl RpcApi<ResponseQuery> {
 
                     let (tx, rx) = oneshot_channel();
                     match rpc_query.send((tx, req.clone())).await {
-                        Ok(_) => {}
+                        Ok(xyz) => {log::warn!("rpc_query: sent {:?}", xyz);}
                         Err(err) => log::error!("Error forwarding rpc query: {}", err),
                     };
                     let resp = rx.await.unwrap();

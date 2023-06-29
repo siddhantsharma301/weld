@@ -1,4 +1,5 @@
 use anvil_core::eth::EthRequest;
+use anvil_rpc::request::{Request, RequestParams};
 use ethers_core::types::transaction::request::TransactionRequest;
 use ethers_providers::{Http, Provider, Middleware};
 use ethereum_types::{Address, U256};
@@ -106,10 +107,11 @@ impl Engine {
         tx: OneShotSender<ResponseQuery>,
         req: RpcRequest,
     ) -> eyre::Result<()> {
-        let params = serde_json::from_str(&req.params)?;
+        // let params = serde_json::from_str(&req.params);
+        // log::warn!("params here daddy: {:?}", params);
         let request_result = serde_json::from_value::<EthRequest>(serde_json::json!({
             "method": req.method.clone(),
-            "params": serde_json::from_str(&req.params)?
+            "params": serde_json::from_str::<Vec<String>>(&req.params)?
         }));
 
         // match request_result {
@@ -149,15 +151,15 @@ impl Engine {
             Ok(eth_request) => {
                 match eth_request {
                     EthRequest::EthGetBalance(_, _) => {
-                        let result: U256 = self.client.request(req.method.clone().as_str(), params).await.unwrap();
+                        let result: U256 = self.client.request(req.method.clone().as_str(), serde_json::from_str::<Vec<String>>(&req.params)?).await.unwrap();
                         serde_json::to_vec(&result).map_err(Into::into)
                     },
-                    EthRequest::EthAccounts(params) => {
-                        let result: Vec<Address> = self.client.request(req.method.clone().as_str(), params).await.unwrap();
+                    EthRequest::EthAccounts(_) => {
+                        let result: Vec<Address> = self.client.request(req.method.clone().as_str(), &RequestParams::None).await.unwrap();
                         serde_json::to_vec(&result).map_err(Into::into)
                     },
                     EthRequest::EthGetUnclesCountByHash(_) => {
-                        let result: U256 = self.client.request(req.method.clone().as_str(), params).await.unwrap();
+                        let result: U256 = self.client.request(req.method.clone().as_str(), serde_json::from_str(&req.params)?).await.unwrap();
                         serde_json::to_vec(&result).map_err(Into::into)
                     }
                     _ => eyre::bail!("lol we don't support this")

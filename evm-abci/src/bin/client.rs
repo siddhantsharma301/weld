@@ -13,13 +13,19 @@ fn get_readable_eth_value(value: U256) -> Result<f64> {
 
 async fn query_balance(host: &str, address: Address) -> Result<()> {
     let client = reqwest::Client::new();
+    println!("Querying balance for {}", address);
+
+    let params = serde_json::to_string(&RequestParams::Array(vec![serde_json::to_value(address)?, serde_json::to_value("latest")?]))?;
+    println!("Params: {}", params);
+
     let res = client
         .get(format!("{}/rpc_query", host))
-        .query(&[("method", "eth_getBalance"), ("params", serde_json::to_string(&RequestParams::Array(vec![serde_json::to_value(address).unwrap(), serde_json::to_value("latest").unwrap()])).unwrap().as_str())])
+        .query(&[("method", "eth_getBalance"), ("params", params.as_str())])
         .send()
         .await?;
 
     let val = res.bytes().await?;
+    println!("val daddy: {:?}", val);
     let val: QueryResponse = serde_json::from_slice(&val)?;
     let val = val.as_balance();
     let readable_value = get_readable_eth_value(val)?;
@@ -33,9 +39,10 @@ async fn query_balance(host: &str, address: Address) -> Result<()> {
 
 async fn get_accounts(host: &str) -> Result<Vec<Address>> {
     let client = reqwest::Client::new();
+    let params = serde_json::to_string(&RequestParams::Array(vec![]))?;
     let res = client
         .get(format!("{}/rpc_query", host))
-        .query(&[("method", "eth_accounts"), ("params", serde_json::to_string(&RequestParams::None).unwrap().as_str())])
+        .query(&[("method", "eth_accounts"), ("params", params.as_str())])
         .send()
         .await?;
 

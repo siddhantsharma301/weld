@@ -1,5 +1,5 @@
 use anvil_core::eth::EthRequest;
-use anvil_rpc::request::{Request, RequestParams};
+use anvil_rpc::request::RequestParams;
 use ethers_core::types::transaction::request::TransactionRequest;
 use ethers_providers::{Http, Provider, Middleware};
 use ethereum_types::{Address, U256};
@@ -107,45 +107,10 @@ impl Engine {
         tx: OneShotSender<ResponseQuery>,
         req: RpcRequest,
     ) -> eyre::Result<()> {
-        // let params = serde_json::from_str(&req.params);
-        // log::warn!("params here daddy: {:?}", params);
         let request_json = serde_json::from_value::<EthRequest>(serde_json::json!({
             "method": req.method.clone(),
             "params": serde_json::from_str::<Vec<String>>(&req.params)?
         }));
-
-        // match request_result {
-        //     Ok(_) => {
-        //         let res = self
-        //             .req_client
-        //             .request::<ResponseResult, ResponseResult>(
-        //                 req.method.clone().as_str(),
-        //                 params.clone(),
-        //             )
-        //             .await?;
-        //         match res {
-        //             ResponseResult::Success(result) => {
-        //                 if let Err(err) = tx.send(ResponseQuery {
-        //                     value: serde_json::to_vec(&result).unwrap().into(),
-        //                     ..Default::default()
-        //                 }) {
-        //                     eyre::bail!("{:?}", err);
-        //                 }
-        //             },
-        //             ResponseResult::Error(err) => {
-        //                 if let Err(err) = tx.send(ResponseQuery {
-        //                     value: serde_json::to_vec(&err).unwrap().into(),
-        //                     ..Default::default()
-        //                 }) {
-        //                     eyre::bail!("{:?}", err);
-        //                 }
-        //             }
-        //         }
-        //     },
-        //     Err(err) => {
-        //         eyre::bail!("{:?}", err);
-        //     }
-        // }
 
         let response = match request_json {
             Ok(eth_request) => {
@@ -218,7 +183,6 @@ impl Engine {
     /// Reconstructs the batch corresponding to the provided Primary's certificate from the Workers' stores
     /// and proceeds to deliver each tx to the App over ABCI's DeliverTx endpoint.
     async fn reconstruct_and_deliver_txs(&mut self, certificate: Certificate) -> eyre::Result<usize> {
-        // when we've already immutably borrowed in the `.map`.)
         #[allow(clippy::needless_collect)]
         let batches = certificate.clone()
             .header
@@ -226,15 +190,12 @@ impl Engine {
             .into_iter()
             .map(|(digest, worker_id)| { 
                 let res = self.reconstruct_batch(digest, worker_id);
-                log::error!("Reconstruct batch: {:?}", res);
                 res
             })
             .collect::<Vec<_>>();
-        log::info!("Header is {:?}", certificate.header.payload);
     
         // Deliver
         let mut total_count = 0;
-        log::info!("Batches: {:?}", batches);
         for batch in batches {
             // this will throw an error if the deserialization failed anywhere
             let batch = batch.map_err(|e| eyre::eyre!(e))?;
@@ -257,7 +218,6 @@ impl Engine {
     async fn deliver_tx(&mut self, tx: Transaction) -> eyre::Result<()> {
         let bytes = serde_json::from_slice::<TransactionRequest>(&tx).unwrap();
         self.client.send_transaction(bytes, None).await?;
-        log::info!("I delivered a tx woooo");
         Ok(())
     }
 

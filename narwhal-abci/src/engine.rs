@@ -1,13 +1,7 @@
 use anvil_core::eth::EthRequest;
-<<<<<<< HEAD
-use ethers_core::types::transaction::request::TransactionRequest;
-use ethers_providers::{Http, Provider, Middleware};
 use ethereum_types::{Address, U256, Signature};
-=======
-use ethereum_types::{Address, U256};
 use ethers_core::types::transaction::request::TransactionRequest;
 use ethers_providers::{Http, Middleware, Provider};
->>>>>>> master
 use evm_abci::types::RpcRequest;
 use std::net::SocketAddr;
 use tokio::sync::mpsc::Receiver;

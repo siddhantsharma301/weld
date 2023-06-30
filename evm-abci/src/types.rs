@@ -1,6 +1,4 @@
-use ethers::{types::{
-    U256, Address, TransactionRequest
-}};
+use ethers::types::{Address, TransactionRequest, U256};
 
 use foundry_evm::revm::primitives::ExecutionResult;
 

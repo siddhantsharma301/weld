@@ -2,7 +2,7 @@ use anvil_rpc::request::RequestParams;
 use ethers::prelude::*;
 use evm_abci::types::QueryResponse;
 use eyre::Result;
-use yansi::{Paint};
+use yansi::Paint;
 
 fn get_readable_eth_value(value: U256) -> Result<f64> {
     let value_string = ethers::utils::format_units(value, "ether")?;
@@ -13,7 +13,17 @@ async fn query_balance(host: &str, address: Address) -> Result<()> {
     let client = reqwest::Client::new();
     let res = client
         .get(format!("{}/rpc_query", host))
-        .query(&[("method", "eth_getBalance"), ("params", serde_json::to_string(&RequestParams::Array(vec![serde_json::to_value(address)?, serde_json::to_value("latest")?]))?.as_str())])
+        .query(&[
+            ("method", "eth_getBalance"),
+            (
+                "params",
+                serde_json::to_string(&RequestParams::Array(vec![
+                    serde_json::to_value(address)?,
+                    serde_json::to_value("latest")?,
+                ]))?
+                .as_str(),
+            ),
+        ])
         .send()
         .await?;
 
@@ -86,7 +96,13 @@ async fn main() -> Result<()> {
     let addresses = get_accounts(host_1).await?;
 
     // Reduce the balance of address 0 and wait for state transition
-    send_transaction(host_2, addresses[0], addresses[8], ethers::utils::parse_units(98.5, 18)?.into()).await?;
+    send_transaction(
+        host_2,
+        addresses[0],
+        addresses[8],
+        ethers::utils::parse_units(98.5, 18)?.into(),
+    )
+    .await?;
     println!("Waiting for consensus...");
     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
@@ -125,6 +141,6 @@ async fn main() -> Result<()> {
     query_balance(host_3, addresses[0]).await?;
     query_balance(host_3, addresses[1]).await?;
     query_balance(host_3, addresses[2]).await?;
-    
+
     Ok(())
 }

@@ -24,10 +24,7 @@ pub struct RpcApi<T> {
 }
 
 impl<T: Send + Sync + std::fmt::Debug> RpcApi<T> {
-    pub fn new(
-        mempool_address: SocketAddr,
-        tx: Sender<(OneShotSender<T>, RpcRequest)>,
-    ) -> Self {
+    pub fn new(mempool_address: SocketAddr, tx: Sender<(OneShotSender<T>, RpcRequest)>) -> Self {
         Self {
             mempool_address,
             tx,
@@ -49,7 +46,8 @@ impl RpcApi<ResponseQuery> {
                         self.mempool_address
                     ))
                     .unwrap();
-                let mut transport: Framed<TcpStream, LengthDelimitedCodec> = Framed::new(stream, LengthDelimitedCodec::new());
+                let mut transport: Framed<TcpStream, LengthDelimitedCodec> =
+                    Framed::new(stream, LengthDelimitedCodec::new());
 
                 if let Err(e) = transport.send(req.tx.clone().into()).await {
                     Ok::<_, Rejection>(format!("ERROR IN: broadcast_tx: {:?}. Err: {}", req, e))
@@ -67,7 +65,7 @@ impl RpcApi<ResponseQuery> {
 
                     let (tx, rx) = oneshot_channel();
                     match rpc_query.send((tx, req.clone())).await {
-                        Ok(_) => {},
+                        Ok(_) => {}
                         Err(err) => log::error!("Error forwarding rpc query: {}", err),
                     };
                     let resp = rx.await.unwrap();

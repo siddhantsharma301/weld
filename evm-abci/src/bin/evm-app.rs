@@ -31,18 +31,19 @@ async fn main() -> eyre::Result<()> {
 
     let addr = args.host.parse::<SocketAddr>().unwrap();
 
-    let node_config = anvil::NodeConfig { 
-        host: Some(addr.ip()), 
+    let node_config = anvil::NodeConfig {
+        host: Some(addr.ip()),
         port: addr.port(),
         no_mining: true,
-        ..Default::default() };
+        ..Default::default()
+    };
 
     let (_, join_handle) = spawn(node_config).await;
 
     match join_handle.await.unwrap() {
         Ok(_) => {
             println!("Successfully listening on address: {}", addr);
-        },
+        }
         Err(err) => {
             println!("Error: {}", err);
         }

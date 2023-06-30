@@ -1,8 +1,7 @@
 use anvil_core::eth::EthRequest;
-use anvil_rpc::request::RequestParams;
 use ethers_core::types::transaction::request::TransactionRequest;
 use ethers_providers::{Http, Provider, Middleware};
-use ethereum_types::{Address, U256};
+use ethereum_types::{Address, U256, Signature};
 use evm_abci::types::RpcRequest;
 use std::net::SocketAddr;
 use tokio::sync::mpsc::Receiver;
@@ -91,11 +90,31 @@ impl Engine {
                         serde_json::to_vec(&result).map_err(Into::into)
                     },
                     EthRequest::EthAccounts(_) => {
-                        let result: Vec<Address> = self.client.request(req.method.clone().as_str(), &RequestParams::None).await.unwrap();
+                        let result: Vec<Address> = self.client.request(req.method.clone().as_str(), serde_json::from_str::<Vec<String>>(&req.params)?).await.unwrap();
+                        serde_json::to_vec(&result).map_err(Into::into)
+                    },
+                    EthRequest::EthBlockNumber(_) => {
+                        let result: U256 = self.client.request(req.method.clone().as_str(), serde_json::from_str::<Vec<String>>(&req.params)?).await.unwrap();
+                        serde_json::to_vec(&result).map_err(Into::into)
+                    },
+                    EthRequest::EthGasPrice(_) => {
+                        let result: U256 = self.client.request(req.method.clone().as_str(), serde_json::from_str::<Vec<String>>(&req.params)?).await.unwrap();
+                        serde_json::to_vec(&result).map_err(Into::into)
+                    },
+                    EthRequest::EthSign(_, _) => {
+                        let result: Signature = self.client.request(req.method.clone().as_str(), serde_json::from_str::<Vec<String>>(&req.params)?).await.unwrap();
+                        serde_json::to_vec(&result).map_err(Into::into)
+                    },
+                    EthRequest::EthGetTransactionCount(_, _) => {
+                        let result: U256 = self.client.request(req.method.clone().as_str(), serde_json::from_str::<Vec<String>>(&req.params)?).await.unwrap();
+                        serde_json::to_vec(&result).map_err(Into::into)
+                    },
+                    EthRequest::EthGetUnclesCountByNumber(_) => {
+                        let result: U256 = self.client.request(req.method.clone().as_str(), serde_json::from_str::<Vec<String>>(&req.params)?).await.unwrap();
                         serde_json::to_vec(&result).map_err(Into::into)
                     },
                     EthRequest::EthGetUnclesCountByHash(_) => {
-                        let result: U256 = self.client.request(req.method.clone().as_str(), serde_json::from_str(&req.params)?).await.unwrap();
+                        let result: U256 = self.client.request(req.method.clone().as_str(), serde_json::from_str::<Vec<String>>(&req.params)?).await.unwrap();
                         serde_json::to_vec(&result).map_err(Into::into)
                     }
                     _ => eyre::bail!("lol we don't support this")

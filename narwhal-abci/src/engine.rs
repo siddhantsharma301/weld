@@ -1,8 +1,7 @@
 use anvil_core::eth::EthRequest;
-use anvil_rpc::request::{Request, RequestParams};
-use ethers_core::types::transaction::request::TransactionRequest;
-use ethers_providers::{Http, Provider, Middleware};
 use ethereum_types::{Address, U256};
+use ethers_core::types::transaction::request::TransactionRequest;
+use ethers_providers::{Http, Middleware, Provider};
 use evm_abci::types::RpcRequest;
 use std::net::SocketAddr;
 use tokio::sync::mpsc::Receiver;
@@ -15,23 +14,13 @@ use tendermint_proto::abci::ResponseQuery;
 use narwhal_crypto::Digest;
 use narwhal_primary::Certificate;
 
-/// The engine drives the ABCI Application by concurrently polling for:
-/// 1. Calling the BeginBlock -> DeliverTx -> EndBlock -> Commit event loop on the ABCI App on each Bullshark
-///    certificate received. It will also call Info and InitChain to initialize the ABCI App if
-///    necessary.
-/// 2. Processing Query & Broadcast Tx messages received from the Primary's ABCI Server API and forwarding them to the
-///    ABCI App via a Tendermint protobuf client.
 pub struct Engine {
-    /// The address of the app
-    pub app_address: SocketAddr,
     /// The path to the Primary's store, so that the Engine can query each of the Primary's workers
     /// for the data corresponding to a Certificate
     pub store_path: String,
     /// Messages received from the RPC Server to be forwarded to the engine.
     pub rx_abci_queries: Receiver<(OneShotSender<ResponseQuery>, RpcRequest)>,
-    /// The last block height, initialized to the application's latest block by default
     pub client: Provider<Http>,
-    pub req_client: Provider<Http>,
 }
 
 impl Engine {
@@ -40,32 +29,19 @@ impl Engine {
         store_path: &str,
         rx_abci_queries: Receiver<(OneShotSender<ResponseQuery>, RpcRequest)>,
     ) -> Self {
-        // let mut client = ClientBuilder::default().connect(&app_address).unwrap();
-
-        // let last_block_height = client
-        //     .info(RequestInfo::default())
-        //     .map(|res| res.last_block_height)
-        //     .unwrap_or_default();
-
         // Instantiate a new client to not be locked in an Info connection
         let client =
             Provider::<Http>::try_from(String::from("http://") + &app_address.to_string()).unwrap();
-        let req_client =
-            Provider::<Http>::try_from(String::from("http://") + &app_address.to_string()).unwrap();
 
         Self {
-            app_address,
             store_path: store_path.to_string(),
             rx_abci_queries,
             client,
-            req_client,
         }
     }
 
     /// Receives an ordered list of certificates and apply any application-specific logic.
     pub async fn run(&mut self, mut rx_output: Receiver<Certificate>) -> eyre::Result<()> {
-        // self.init_chain()?;
-
         loop {
             tokio::select! {
                 Some(certificate) = rx_output.recv() => {
@@ -84,12 +60,6 @@ impl Engine {
     /// On each new certificate, increment the block height to proposed and run through the
     /// BeginBlock -> DeliverTx for each tx in the certificate -> EndBlock -> Commit event loop.
     async fn handle_cert(&mut self, certificate: Certificate) -> eyre::Result<()> {
-        // increment block
-        // let proposed_block_height = self.last_block_height + 1;
-
-        // // save it for next time
-        // self.last_block_height = proposed_block_height;
-
         // drive the app through the event loop
         let tx_count = self.reconstruct_and_deliver_txs(certificate).await?;
         log::info!("Tx count {}", tx_count);
@@ -107,70 +77,57 @@ impl Engine {
         tx: OneShotSender<ResponseQuery>,
         req: RpcRequest,
     ) -> eyre::Result<()> {
-        // let params = serde_json::from_str(&req.params);
-        // log::warn!("params here daddy: {:?}", params);
         let request_json = serde_json::from_value::<EthRequest>(serde_json::json!({
             "method": req.method.clone(),
             "params": serde_json::from_str::<Vec<String>>(&req.params)?
         }));
 
-        // match request_result {
-        //     Ok(_) => {
-        //         let res = self
-        //             .req_client
-        //             .request::<ResponseResult, ResponseResult>(
-        //                 req.method.clone().as_str(),
-        //                 params.clone(),
-        //             )
-        //             .await?;
-        //         match res {
-        //             ResponseResult::Success(result) => {
-        //                 if let Err(err) = tx.send(ResponseQuery {
-        //                     value: serde_json::to_vec(&result).unwrap().into(),
-        //                     ..Default::default()
-        //                 }) {
-        //                     eyre::bail!("{:?}", err);
-        //                 }
-        //             },
-        //             ResponseResult::Error(err) => {
-        //                 if let Err(err) = tx.send(ResponseQuery {
-        //                     value: serde_json::to_vec(&err).unwrap().into(),
-        //                     ..Default::default()
-        //                 }) {
-        //                     eyre::bail!("{:?}", err);
-        //                 }
-        //             }
-        //         }
-        //     },
-        //     Err(err) => {
-        //         eyre::bail!("{:?}", err);
-        //     }
-        // }
-
         let response = match request_json {
-            Ok(eth_request) => {
-                match eth_request {
-                    EthRequest::EthGetBalance(_, _) => {
-                        let result: U256 = self.client.request(req.method.clone().as_str(), serde_json::from_str::<Vec<String>>(&req.params)?).await.unwrap();
-                        serde_json::to_vec(&result).map_err(Into::into)
-                    },
-                    EthRequest::EthAccounts(_) => {
-                        let result: Vec<Address> = self.client.request(req.method.clone().as_str(), &RequestParams::None).await.unwrap();
-                        serde_json::to_vec(&result).map_err(Into::into)
-                    },
-                    EthRequest::EthGetUnclesCountByHash(_) => {
-                        let result: U256 = self.client.request(req.method.clone().as_str(), serde_json::from_str(&req.params)?).await.unwrap();
-                        serde_json::to_vec(&result).map_err(Into::into)
-                    }
-                    _ => eyre::bail!("lol we don't support this")
-                }        
+            Ok(eth_request) => match eth_request {
+                EthRequest::EthGetBalance(_, _) => {
+                    let result: U256 = self
+                        .client
+                        .request(
+                            req.method.clone().as_str(),
+                            serde_json::from_str::<Vec<String>>(&req.params)?,
+                        )
+                        .await
+                        .unwrap();
+                    serde_json::to_vec(&result).map_err(Into::into)
+                }
+                EthRequest::EthAccounts(_) => {
+                    let result: Vec<Address> = self
+                        .client
+                        .request(
+                            req.method.clone().as_str(),
+                            serde_json::from_str::<Vec<String>>(&req.params)?,
+                        )
+                        .await
+                        .unwrap();
+                    serde_json::to_vec(&result).map_err(Into::into)
+                }
+                EthRequest::EthGetUnclesCountByHash(_) => {
+                    let result: U256 = self
+                        .client
+                        .request(
+                            req.method.clone().as_str(),
+                            serde_json::from_str(&req.params)?,
+                        )
+                        .await
+                        .unwrap();
+                    serde_json::to_vec(&result).map_err(Into::into)
+                }
+                _ => eyre::bail!("lol we don't support this"),
             },
-            Err(err) => Err(err)
+            Err(err) => Err(err),
         };
         if let Ok(response) = response {
-            if let Err (err) = tx.send(ResponseQuery{value: response, ..Default::default()}) {
+            if let Err(err) = tx.send(ResponseQuery {
+                value: response,
+                ..Default::default()
+            }) {
                 eyre::bail!("{:?}", err);
-            }    
+            }
         }
         Ok(())
     }
@@ -210,37 +167,43 @@ impl Engine {
                     count += 1;
                 }
             }
-            _ => { log::error!("wtf"); eyre::bail!("unrecognized message format") } ,
+            _ => {
+                log::error!("wtf");
+                eyre::bail!("unrecognized message format")
+            }
         };
         Ok(count)
     }
 
     /// Reconstructs the batch corresponding to the provided Primary's certificate from the Workers' stores
     /// and proceeds to deliver each tx to the App over ABCI's DeliverTx endpoint.
-    async fn reconstruct_and_deliver_txs(&mut self, certificate: Certificate) -> eyre::Result<usize> {
-        // when we've already immutably borrowed in the `.map`.)
+    async fn reconstruct_and_deliver_txs(
+        &mut self,
+        certificate: Certificate,
+    ) -> eyre::Result<usize> {
         #[allow(clippy::needless_collect)]
-        let batches = certificate.clone()
+        let batches = certificate
+            .clone()
             .header
             .payload
             .into_iter()
-            .map(|(digest, worker_id)| { 
+            .map(|(digest, worker_id)| {
                 let res = self.reconstruct_batch(digest, worker_id);
-                log::error!("Reconstruct batch: {:?}", res);
                 res
             })
             .collect::<Vec<_>>();
-        log::info!("Header is {:?}", certificate.header.payload);
-    
+
         // Deliver
         let mut total_count = 0;
-        log::info!("Batches: {:?}", batches);
         for batch in batches {
             // this will throw an error if the deserialization failed anywhere
             let batch = batch.map_err(|e| eyre::eyre!(e))?;
-            total_count += self.deliver_batch(batch).await.map_err(|e| eyre::eyre!(e))?;
+            total_count += self
+                .deliver_batch(batch)
+                .await
+                .map_err(|e| eyre::eyre!(e))?;
         }
-    
+
         Ok(total_count)
     }
 
@@ -257,13 +220,14 @@ impl Engine {
     async fn deliver_tx(&mut self, tx: Transaction) -> eyre::Result<()> {
         let bytes = serde_json::from_slice::<TransactionRequest>(&tx).unwrap();
         self.client.send_transaction(bytes, None).await?;
-        log::info!("I delivered a tx woooo");
         Ok(())
     }
 
     /// Calls the `Commit` hook on the ABCI app.
     async fn commit(&mut self, tx_count: usize) -> eyre::Result<()> {
-        self.client.request("anvil_mine", vec![U256::from(tx_count), U256::from(0)]).await?;
+        self.client
+            .request("anvil_mine", vec![U256::from(tx_count), U256::from(0)])
+            .await?;
         Ok(())
     }
 }

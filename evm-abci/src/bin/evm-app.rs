@@ -1,5 +1,4 @@
 use anvil::spawn;
-use evm_abci::App;
 use std::net::SocketAddr;
 
 use clap::Parser;
@@ -29,22 +28,22 @@ pub fn subscriber() {
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     let args = Args::parse();
-    // subscriber();
 
     let addr = args.host.parse::<SocketAddr>().unwrap();
 
-    let node_config = anvil::NodeConfig { 
-        host: Some(addr.ip()), 
+    let node_config = anvil::NodeConfig {
+        host: Some(addr.ip()),
         port: addr.port(),
         no_mining: true,
-        ..Default::default() };
+        ..Default::default()
+    };
 
     let (_, join_handle) = spawn(node_config).await;
 
     match join_handle.await.unwrap() {
         Ok(_) => {
             println!("Successfully listening on address: {}", addr);
-        },
+        }
         Err(err) => {
             println!("Error: {}", err);
         }

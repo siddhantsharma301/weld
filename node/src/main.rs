@@ -14,7 +14,7 @@ use store::Store;
 use tokio::sync::mpsc::{channel, Receiver};
 use worker::Worker;
 
-use narwhal_abci::{RpcApi, Engine};
+use narwhal_abci::{Engine, RpcApi};
 
 /// The default channel capacity.
 pub const CHANNEL_CAPACITY: usize = 1_000;
@@ -194,7 +194,6 @@ async fn process(
 
     tokio::spawn(async move {
         let api = RpcApi::new(mempool_address, tx_abci_queries);
-        // let tx_abci_queries = tx_abci_queries.clone();
         // Spawn the ABCI RPC endpoint
         let mut address = abci_api.parse::<SocketAddr>().unwrap();
         address.set_ip("0.0.0.0".parse().unwrap());
@@ -203,8 +202,7 @@ async fn process(
 
     // Analyze the consensus' output.
     // Spawn the network receiver listening to messages from the other primaries.
-    let mut app_address = app_api.parse::<SocketAddr>().unwrap();
-    // app_address.set_ip("0.0.0.0".parse().unwrap());
+    let app_address = app_api.parse::<SocketAddr>().unwrap();
     let mut engine = Engine::new(app_address, store_path, rx_abci_queries);
     engine.run(rx_output).await?;
 

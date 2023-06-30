@@ -10,11 +10,3 @@ use serde::{Deserialize, Serialize};
 pub struct BroadcastTxQuery {
     tx: String,
 }
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct AbciQueryQuery {
-    path: String,
-    data: String,
-    height: Option<usize>,
-    prove: Option<bool>,
-}

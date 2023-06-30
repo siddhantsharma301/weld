@@ -1,4 +1,4 @@
-use crate::{AbciQueryQuery, BroadcastTxQuery};
+use crate::BroadcastTxQuery;
 
 use eyre::WrapErr;
 use futures::SinkExt;
@@ -67,7 +67,7 @@ impl RpcApi<ResponseQuery> {
 
                     let (tx, rx) = oneshot_channel();
                     match rpc_query.send((tx, req.clone())).await {
-                        Ok(xyz) => {log::warn!("rpc_query: sent {:?}", xyz);}
+                        Ok(_) => {},
                         Err(err) => log::error!("Error forwarding rpc query: {}", err),
                     };
                     let resp = rx.await.unwrap();

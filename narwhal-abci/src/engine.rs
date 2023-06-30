@@ -15,23 +15,13 @@ use tendermint_proto::abci::ResponseQuery;
 use narwhal_crypto::Digest;
 use narwhal_primary::Certificate;
 
-/// The engine drives the ABCI Application by concurrently polling for:
-/// 1. Calling the BeginBlock -> DeliverTx -> EndBlock -> Commit event loop on the ABCI App on each Bullshark
-///    certificate received. It will also call Info and InitChain to initialize the ABCI App if
-///    necessary.
-/// 2. Processing Query & Broadcast Tx messages received from the Primary's ABCI Server API and forwarding them to the
-///    ABCI App via a Tendermint protobuf client.
 pub struct Engine {
-    /// The address of the app
-    pub app_address: SocketAddr,
     /// The path to the Primary's store, so that the Engine can query each of the Primary's workers
     /// for the data corresponding to a Certificate
     pub store_path: String,
     /// Messages received from the RPC Server to be forwarded to the engine.
     pub rx_abci_queries: Receiver<(OneShotSender<ResponseQuery>, RpcRequest)>,
-    /// The last block height, initialized to the application's latest block by default
     pub client: Provider<Http>,
-    pub req_client: Provider<Http>,
 }
 
 impl Engine {
@@ -40,32 +30,19 @@ impl Engine {
         store_path: &str,
         rx_abci_queries: Receiver<(OneShotSender<ResponseQuery>, RpcRequest)>,
     ) -> Self {
-        // let mut client = ClientBuilder::default().connect(&app_address).unwrap();
-
-        // let last_block_height = client
-        //     .info(RequestInfo::default())
-        //     .map(|res| res.last_block_height)
-        //     .unwrap_or_default();
-
         // Instantiate a new client to not be locked in an Info connection
         let client =
             Provider::<Http>::try_from(String::from("http://") + &app_address.to_string()).unwrap();
-        let req_client =
-            Provider::<Http>::try_from(String::from("http://") + &app_address.to_string()).unwrap();
 
         Self {
-            app_address,
             store_path: store_path.to_string(),
             rx_abci_queries,
             client,
-            req_client,
         }
     }
 
     /// Receives an ordered list of certificates and apply any application-specific logic.
     pub async fn run(&mut self, mut rx_output: Receiver<Certificate>) -> eyre::Result<()> {
-        // self.init_chain()?;
-
         loop {
             tokio::select! {
                 Some(certificate) = rx_output.recv() => {
@@ -84,12 +61,6 @@ impl Engine {
     /// On each new certificate, increment the block height to proposed and run through the
     /// BeginBlock -> DeliverTx for each tx in the certificate -> EndBlock -> Commit event loop.
     async fn handle_cert(&mut self, certificate: Certificate) -> eyre::Result<()> {
-        // increment block
-        // let proposed_block_height = self.last_block_height + 1;
-
-        // // save it for next time
-        // self.last_block_height = proposed_block_height;
-
         // drive the app through the event loop
         let tx_count = self.reconstruct_and_deliver_txs(certificate).await?;
         log::info!("Tx count {}", tx_count);

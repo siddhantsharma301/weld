@@ -1,9 +1,7 @@
 use anvil_rpc::request::RequestParams;
 use ethers::prelude::*;
-use evm_abci::types::{Query, QueryResponse};
+use evm_abci::types::QueryResponse;
 use eyre::Result;
-use once_cell::sync::Lazy;
-use std::{collections::HashMap, error::Error};
 use yansi::{Paint};
 
 fn get_readable_eth_value(value: U256) -> Result<f64> {
@@ -13,14 +11,9 @@ fn get_readable_eth_value(value: U256) -> Result<f64> {
 
 async fn query_balance(host: &str, address: Address) -> Result<()> {
     let client = reqwest::Client::new();
-    println!("Querying balance for {}", address);
-
-    let params = serde_json::to_string(&RequestParams::Array(vec![serde_json::to_value(address)?, serde_json::to_value("latest")?]))?;
-    println!("Params: {}", params);
-
     let res = client
         .get(format!("{}/rpc_query", host))
-        .query(&[("method", "eth_getBalance"), ("params", params.as_str())])
+        .query(&[("method", "eth_getBalance"), ("params", serde_json::to_string(&RequestParams::Array(vec![serde_json::to_value(address)?, serde_json::to_value("latest")?]))?.as_str())])
         .send()
         .await?;
 
@@ -92,8 +85,9 @@ async fn main() -> Result<()> {
 
     let addresses = get_accounts(host_1).await?;
 
+    // Reduce the balance of address 0 and wait for state transition
     send_transaction(host_2, addresses[0], addresses[8], ethers::utils::parse_units(98.5, 18)?.into()).await?;
-
+    println!("Waiting for consensus...");
     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
     // TODO: Query initial balances from host_1
@@ -101,7 +95,7 @@ async fn main() -> Result<()> {
     query_balance(host_1, addresses[1]).await?;
     query_balance(host_1, addresses[2]).await?;
 
-    println!("---");
+    println!("===============================");
 
     // Send conflicting transactions
     println!(
@@ -112,20 +106,20 @@ async fn main() -> Result<()> {
     send_transaction(host_2, addresses[0], addresses[1], value.into()).await?;
     send_transaction(host_3, addresses[0], addresses[2], value.into()).await?;
 
-    println!("---");
+    println!("===============================");
 
     println!("Waiting for consensus...");
     // Takes ~5 seconds to actually apply the state transition?
     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
 
-    println!("---");
+    println!("===============================");
 
     // TODO: Query final balances from host_2
     query_balance(host_2, addresses[0]).await?;
     query_balance(host_2, addresses[1]).await?;
     query_balance(host_2, addresses[2]).await?;
 
-    println!("---");
+    println!("===============================");
 
     // TODO: Query final balances from host_3
     query_balance(host_3, addresses[0]).await?;

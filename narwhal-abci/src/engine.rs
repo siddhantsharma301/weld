@@ -91,7 +91,7 @@ impl Engine {
                         serde_json::to_vec(&result).map_err(Into::into)
                     },
                     EthRequest::EthAccounts(_) => {
-                        let result: Vec<Address> = self.client.request(req.method.clone().as_str(), &RequestParams::None).await.unwrap();
+                        let result: Vec<Address> = self.client.request(req.method.clone().as_str(), serde_json::from_str::<Vec<String>>(&req.params)?).await.unwrap();
                         serde_json::to_vec(&result).map_err(Into::into)
                     },
                     EthRequest::EthGetUnclesCountByHash(_) => {

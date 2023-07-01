@@ -1,4 +1,7 @@
-use ethers::{types::{Address, TransactionRequest, U256}, abi::ethereum_types::Signature};
+use ethers::{
+    abi::ethereum_types::Signature,
+    types::{Address, TransactionRequest, U256},
+};
 
 use foundry_evm::revm::primitives::ExecutionResult;
 
@@ -20,7 +23,7 @@ pub enum Query {
 pub enum QueryResponse {
     Tx(ExecutionResult),
     Number(U256),
-    Sign(Signature)
+    Sign(Signature),
 }
 
 impl QueryResponse {

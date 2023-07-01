@@ -1,5 +1,8 @@
 use anvil_rpc::request::RequestParams;
-use ethers::{prelude::*, abi::ethereum_types::{Secret, H520}};
+use ethers::{
+    abi::ethereum_types::{Secret, H520},
+    prelude::*,
+};
 use evm_abci::types::QueryResponse;
 use eyre::Result;
 use foundry_evm::revm::primitives::bytes;
@@ -81,10 +84,8 @@ async fn get_uncle_count_by_block_hash(host: &str, hash: Secret) -> Result<U256>
             ("method", "eth_getUncleCountByBlockHash"),
             (
                 "params",
-                serde_json::to_string(&RequestParams::Array(vec![
-                    serde_json::to_value(hash)?,
-                ]))?
-                .as_str(),
+                serde_json::to_string(&RequestParams::Array(vec![serde_json::to_value(hash)?]))?
+                    .as_str(),
             ),
         ])
         .send()

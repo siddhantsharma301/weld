@@ -5,7 +5,6 @@ use ethers::{
 };
 use evm_abci::types::QueryResponse;
 use eyre::Result;
-use foundry_evm::revm::primitives::bytes;
 use yansi::Paint;
 
 fn get_readable_eth_value(value: U256) -> Result<f64> {
@@ -71,8 +70,28 @@ async fn get_gas_price(host: &str) -> Result<f64> {
 }
 
 #[allow(dead_code)]
-async fn get_transaction_count(host: &str) -> Result<U256> {
-    get_integer_with_no_params(host, "eth_getTransactionCount").await
+async fn get_transaction_count(host: &str, address: Address) -> Result<U256> {
+    let client = reqwest::Client::new();
+    let res = client
+        .get(format!("{}/rpc_query", host))
+        .query(&[
+            ("method", "eth_getTransactionCount"),
+            (
+                "params",
+                serde_json::to_string(&RequestParams::Array(vec![
+                    serde_json::to_value(address)?,
+                    serde_json::to_value("latest")?,
+                ]))?
+                .as_str(),
+            ),
+        ])
+        .send()
+        .await?;
+
+    let val = res.bytes().await?;
+    let val: QueryResponse = QueryResponse::Number(serde_json::from_slice(&val)?);
+    let val = val.as_balance();
+    Ok(val)
 }
 
 #[allow(dead_code)]
@@ -98,7 +117,7 @@ async fn get_uncle_count_by_block_hash(host: &str, hash: Secret) -> Result<U256>
 }
 
 #[allow(dead_code)]
-async fn get_sign(host: &str, address: Address, data: bytes::Bytes) -> Result<H520> {
+async fn get_sign(host: &str, address: Address, data: &str) -> Result<H520> {
     let client = reqwest::Client::new();
     let res = client
         .get(format!("{}/rpc_query", host))

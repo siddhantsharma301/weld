@@ -1,12 +1,28 @@
 use anvil_rpc::request::RequestParams;
-use ethers::prelude::*;
+use ethers::{prelude::*, abi::ethereum_types::{Secret, H520}};
 use evm_abci::types::QueryResponse;
 use eyre::Result;
+use foundry_evm::revm::primitives::bytes;
 use yansi::Paint;
 
 fn get_readable_eth_value(value: U256) -> Result<f64> {
     let value_string = ethers::utils::format_units(value, "ether")?;
     Ok(value_string.parse::<f64>()?)
+}
+
+async fn get_integer_with_no_params(host: &str, method: &str) -> Result<U256> {
+    let client = reqwest::Client::new();
+    let params = serde_json::to_string(&RequestParams::Array(vec![]))?;
+    let res = client
+        .get(format!("{}/rpc_query", host))
+        .query(&[("method", method), ("params", params.as_str())])
+        .send()
+        .await?;
+
+    let val = res.bytes().await?;
+    let val: QueryResponse = QueryResponse::Number(serde_json::from_slice(&val)?);
+    let val = val.as_balance();
+    Ok(val)
 }
 
 async fn query_balance(host: &str, address: Address) -> Result<()> {
@@ -28,7 +44,7 @@ async fn query_balance(host: &str, address: Address) -> Result<()> {
         .await?;
 
     let val = res.bytes().await?;
-    let val: QueryResponse = QueryResponse::Balance(serde_json::from_slice(&val)?);
+    let val: QueryResponse = QueryResponse::Number(serde_json::from_slice(&val)?);
     let val = val.as_balance();
     let readable_value = get_readable_eth_value(val)?;
     println!(
@@ -37,6 +53,72 @@ async fn query_balance(host: &str, address: Address) -> Result<()> {
         Paint::green(format!("{} ETH", readable_value)).bold()
     );
     Ok(())
+}
+
+#[allow(dead_code)]
+async fn get_block_number(host: &str) -> Result<U256> {
+    get_integer_with_no_params(host, "eth_blockNumber").await
+}
+
+#[allow(dead_code)]
+async fn get_gas_price(host: &str) -> Result<f64> {
+    let gas_price = get_integer_with_no_params(host, "eth_gasPrice").await?;
+    let readable_gas_price = get_readable_eth_value(gas_price)?;
+    Ok(readable_gas_price)
+}
+
+#[allow(dead_code)]
+async fn get_transaction_count(host: &str) -> Result<U256> {
+    get_integer_with_no_params(host, "eth_getTransactionCount").await
+}
+
+#[allow(dead_code)]
+async fn get_uncle_count_by_block_hash(host: &str, hash: Secret) -> Result<U256> {
+    let client = reqwest::Client::new();
+    let res = client
+        .get(format!("{}/rpc_query", host))
+        .query(&[
+            ("method", "eth_getUncleCountByBlockHash"),
+            (
+                "params",
+                serde_json::to_string(&RequestParams::Array(vec![
+                    serde_json::to_value(hash)?,
+                ]))?
+                .as_str(),
+            ),
+        ])
+        .send()
+        .await?;
+
+    let val = res.bytes().await?;
+    let val: QueryResponse = QueryResponse::Number(serde_json::from_slice(&val)?);
+    let val = val.as_balance();
+    Ok(val)
+}
+
+#[allow(dead_code)]
+async fn get_sign(host: &str, address: Address, data: bytes::Bytes) -> Result<H520> {
+    let client = reqwest::Client::new();
+    let res = client
+        .get(format!("{}/rpc_query", host))
+        .query(&[
+            ("method", "eth_sign"),
+            (
+                "params",
+                serde_json::to_string(&RequestParams::Array(vec![
+                    serde_json::to_value(address)?,
+                    serde_json::to_value(data)?,
+                ]))?
+                .as_str(),
+            ),
+        ])
+        .send()
+        .await?;
+
+    let val = res.bytes().await?;
+    let val: QueryResponse = QueryResponse::Sign(serde_json::from_slice(&val)?);
+    let val = val.as_signature();
+    Ok(val)
 }
 
 async fn get_accounts(host: &str) -> Result<Vec<Address>> {

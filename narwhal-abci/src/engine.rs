@@ -101,22 +101,18 @@ impl Engine {
                         let result: U256 = self.client.request(req.method.clone().as_str(), serde_json::from_str::<Vec<String>>(&req.params)?).await.unwrap();
                         serde_json::to_vec(&result).map_err(Into::into)
                     },
-                    EthRequest::EthSign(_, _) => {
-                        let result: Signature = self.client.request(req.method.clone().as_str(), serde_json::from_str::<Vec<String>>(&req.params)?).await.unwrap();
-                        serde_json::to_vec(&result).map_err(Into::into)
-                    },
                     EthRequest::EthGetTransactionCount(_, _) => {
-                        let result: U256 = self.client.request(req.method.clone().as_str(), serde_json::from_str::<Vec<String>>(&req.params)?).await.unwrap();
-                        serde_json::to_vec(&result).map_err(Into::into)
-                    },
-                    EthRequest::EthGetUnclesCountByNumber(_) => {
                         let result: U256 = self.client.request(req.method.clone().as_str(), serde_json::from_str::<Vec<String>>(&req.params)?).await.unwrap();
                         serde_json::to_vec(&result).map_err(Into::into)
                     },
                     EthRequest::EthGetUnclesCountByHash(_) => {
                         let result: U256 = self.client.request(req.method.clone().as_str(), serde_json::from_str::<Vec<String>>(&req.params)?).await.unwrap();
                         serde_json::to_vec(&result).map_err(Into::into)
-                    }
+                    },
+                    EthRequest::EthSign(_, _) => {
+                        let result: Signature = self.client.request(req.method.clone().as_str(), serde_json::from_str::<Vec<String>>(&req.params)?).await.unwrap();
+                        serde_json::to_vec(&result).map_err(Into::into)
+                    },
                     _ => eyre::bail!("lol we don't support this")
                 }        
             },

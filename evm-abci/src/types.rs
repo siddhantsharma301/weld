@@ -1,4 +1,4 @@
-use ethers::types::{Address, TransactionRequest, U256};
+use ethers::{types::{Address, TransactionRequest, U256}, abi::ethereum_types::Signature};
 
 use foundry_evm::revm::primitives::ExecutionResult;
 
@@ -19,7 +19,8 @@ pub enum Query {
 #[allow(clippy::large_enum_variant)]
 pub enum QueryResponse {
     Tx(ExecutionResult),
-    Balance(U256),
+    Number(U256),
+    Sign(Signature)
 }
 
 impl QueryResponse {
@@ -32,8 +33,15 @@ impl QueryResponse {
 
     pub fn as_balance(&self) -> U256 {
         match self {
-            QueryResponse::Balance(inner) => *inner,
+            QueryResponse::Number(inner) => *inner,
             _ => panic!("not a balance"),
+        }
+    }
+
+    pub fn as_signature(&self) -> Signature {
+        match self {
+            QueryResponse::Sign(inner) => *inner,
+            _ => panic!("not a signature"),
         }
     }
 }

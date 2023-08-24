@@ -15,12 +15,15 @@ The RPC shim redirects all other RPC calls (such as `eth_getBalance`, `eth_getTr
 <img src="https://www.paradigm.xyz/static/experiment-narwhal-bullshark-cosmos-stack/anvil-node.png" />
 (image credit: Paradigm)
 
-### Why Narwhal/Bullshark?
+## Why Narwhal/Bullshark?
 Narwhall/Bullshark are a part of a class of DAG-based BFT protocols that emphasize high throughput for proof-of-stake blockchains. It is fundamentally different than existing algorithms such as Gasper (Ethereum 2.0) and Tendermint, giving users more performant and customizable testnets. By using Foundry's Anvil, we allow users to pick their _own_ consensus algorithms, giving them control over the consensus _and_ execution layer. If users want to use N/B with a different execution environment, they can interface with the RPC that the consensus layer exposes.
 
-### How did we integrate N/B with Anvil?
+## How did we integrate N/B with Anvil?
 
 We had to find a way to imitate ABCI's `BeginBlock`, `DeliverTx`, `EndBlock`, and `Commit` hooks using a RPC server instead. We did this by using Anvil's `--no-mining` mode, delivering transactions from each batch to Anvil and then manually forcing Anvil to mine a block once the entire batch has been delivered.
+
+## Execution and Consensus Layer Flexibility
+Using the RPC shim, we can easily swap out the execution layer with any VM implementations. We can also swap out the consensus layer with any other consensus algorithm that exposes an RPC interface. This allows us to create a testnet with any combination of execution and consensus layers. For example, we can use Tendermint with Anvil or we can use Solana VM with N/B.
 
 ## Demo
 
@@ -45,4 +48,4 @@ The demo consensus network is run by four nodes (each running on localhost), who
 * Migrating from `ethers-rs` to [Alloy](https://github.com/alloy-rs/core)
 
 ## Acknowledgments
-We want to thank Georgios K., Andrew K., Joachim N., and the Foundry team for their initial work.
+We want to thank [Georgios K.](https://twitter.com/gakonst), [Andrew K.](https://twitter.com/a_kirillo), [Joachim N.](https://twitter.com/jneu_net), and the Foundry team for their initial work.

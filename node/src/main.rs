@@ -14,7 +14,7 @@ use store::Store;
 use tokio::sync::mpsc::{channel, Receiver};
 use worker::Worker;
 
-use narwhal_abci::{Engine, RpcApi};
+use narwhal::{Engine, RpcApi};
 
 /// The default channel capacity.
 pub const CHANNEL_CAPACITY: usize = 1_000;

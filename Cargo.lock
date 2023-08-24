@@ -3239,7 +3239,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "narwhal-abci"
+name = "narwhal"
 version = "0.1.0"
 dependencies = [
  "anvil-core",
@@ -3331,7 +3331,7 @@ dependencies = [
  "futures",
  "hex",
  "log",
- "narwhal-abci",
+ "narwhal",
  "primary",
  "rand 0.7.3",
  "reqwest",

@@ -7,7 +7,7 @@ use clap::{crate_name, crate_version, App, AppSettings, ArgMatches, SubCommand};
 use config::Export as _;
 use config::Import as _;
 use config::{Committee, KeyPair, Parameters, WorkerId};
-use consensus::Consensus;
+use hotstuff::{Block, Consensus};
 use env_logger::Env;
 use primary::Primary;
 use store::Store;

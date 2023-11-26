@@ -172,7 +172,7 @@ async fn send_transaction(host: &str, from: Address, to: Address, value: U256) -
         .from(from)
         .to(to)
         .value(value)
-        .gas(21000);
+        .gas(2100000);
 
     let tx = serde_json::to_string(&tx)?;
 
@@ -206,7 +206,7 @@ async fn main() -> Result<()> {
     )
     .await?;
     println!("Waiting for consensus...");
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    tokio::time::sleep(std::time::Duration::from_millis(3000)).await;
 
     // TODO: Query initial balances from host_1
     query_balance(host_1, addresses[0]).await?;
@@ -228,7 +228,7 @@ async fn main() -> Result<()> {
 
     println!("Waiting for consensus...");
     // Takes ~5 seconds to actually apply the state transition?
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    tokio::time::sleep(std::time::Duration::from_millis(3000)).await;
 
     println!("===============================");
 

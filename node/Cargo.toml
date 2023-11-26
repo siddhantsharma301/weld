@@ -18,12 +18,13 @@ futures = "0.3.15"
 tendermint-abci = { version = "0.23.7", features = ["client"] }
 tendermint-proto = "0.23.7"
 
-config = { git = "https://github.com/asonnino/narwhal/" }
-store = { git = "https://github.com/asonnino/narwhal/" }
-crypto = { git = "https://github.com/asonnino/narwhal/" }
-primary = { git = "https://github.com/asonnino/narwhal/" }
-worker = { git = "https://github.com/asonnino/narwhal/" }
-consensus = { git = "https://github.com/asonnino/narwhal/" }
+config = { git = "https://github.com/asonnino/narwhal/", branch="narwhal-hs" }
+store = { git = "https://github.com/asonnino/narwhal/", branch="narwhal-hs" }
+crypto = { git = "https://github.com/asonnino/narwhal/", branch="narwhal-hs" }
+primary = { git = "https://github.com/asonnino/narwhal/", branch="narwhal-hs" }
+worker = { git = "https://github.com/asonnino/narwhal/", branch="narwhal-hs" }
+consensus = { git = "https://github.com/asonnino/narwhal/", branch="narwhal-hs" }
+hotstuff = { git = "https://github.com/asonnino/narwhal/", branch="narwhal-hs" }
 
 hex = "0.4.3"
 serde_json = "1.0.82"

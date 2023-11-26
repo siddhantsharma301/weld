@@ -25,6 +25,9 @@ class Committee:
         "authorities: {
             "name": {
                 "stake": 1,
+                "consensus: {
+                    "consensus_to_consensus": x.x.x.x:x,
+                },
                 "primary: {
                     "primary_to_primary": x.x.x.x:x,
                     "worker_to_primary": x.x.x.x:x,
@@ -64,6 +67,11 @@ class Committee:
         self.json = {'authorities': OrderedDict()}
         for name, hosts in addresses.items():
             host = hosts.pop(0)
+            consensus_addr = {
+                'consensus_to_consensus': f'{host}:{port}',
+            }
+            port += 1
+
             primary_addr = {
                 'primary_to_primary': f'{host}:{port}',
                 'worker_to_primary': f'{host}:{port + 1}',
@@ -85,6 +93,7 @@ class Committee:
 
             self.json['authorities'][name] = {
                 'stake': 1,
+                'consensus': consensus_addr,
                 'primary': primary_addr,
                 'workers': workers_addr
             }
@@ -98,6 +107,18 @@ class Committee:
             addresses += [authority['primary']['primary_to_primary']]
         return addresses
 
+    def workers_addresses(self, faults=0):
+        ''' Returns an ordered list of list of workers' addresses. '''
+        assert faults < self.size()
+        addresses = []
+        good_nodes = self.size() - faults
+        for authority in list(self.json['authorities'].values())[:good_nodes]:
+            authority_addresses = []
+            for id, worker in authority['workers'].items():
+                authority_addresses += [(id, worker['transactions'])]
+            addresses.append(authority_addresses)
+        return addresses
+    
     def rpc_addresses(self, faults=0):
         ''' Returns an ordered list of rpcs' addresses. '''
         assert faults < self.size()
@@ -116,18 +137,6 @@ class Committee:
             addresses += [authority['primary']['api_abci']]
         return addresses
 
-    def workers_addresses(self, faults=0):
-        ''' Returns an ordered list of list of workers' addresses. '''
-        assert faults < self.size()
-        addresses = []
-        good_nodes = self.size() - faults
-        for authority in list(self.json['authorities'].values())[:good_nodes]:
-            authority_addresses = []
-            for id, worker in authority['workers'].items():
-                authority_addresses += [(id, worker['transactions'])]
-            addresses.append(authority_addresses)
-        return addresses
-
     def ips(self, name=None):
         ''' Returns all the ips associated with an authority (in any order). '''
         if name is None:
@@ -137,6 +146,9 @@ class Committee:
 
         ips = set()
         for name in names:
+            addresses = self.json['authorities'][name]['consensus']
+            ips.add(self.ip(addresses['consensus_to_consensus']))
+
             addresses = self.json['authorities'][name]['primary']
             ips.add(self.ip(addresses['primary_to_primary']))
             ips.add(self.ip(addresses['worker_to_primary']))
@@ -163,7 +175,6 @@ class Committee:
         return sum(len(x['workers']) for x in self.json['authorities'].values())
 
     def print(self, filename):
-        print(filename)
         assert isinstance(filename, str)
         with open(filename, 'w') as f:
             dump(self.json, f, indent=4, sort_keys=True)
@@ -188,6 +199,7 @@ class NodeParameters:
     def __init__(self, json):
         inputs = []
         try:
+            inputs += [json['timeout_delay']]
             inputs += [json['header_size']]
             inputs += [json['max_header_delay']]
             inputs += [json['gc_depth']]
@@ -226,7 +238,6 @@ class BenchParameters:
                 raise ConfigError('Missing input rate')
             self.rate = [int(x) for x in rate]
 
-            
             self.workers = int(json['workers'])
 
             if 'collocate' in json:
@@ -235,7 +246,7 @@ class BenchParameters:
                 self.collocate = True
 
             self.tx_size = int(json['tx_size'])
-           
+
             self.duration = int(json['duration'])
 
             self.runs = int(json['runs']) if 'runs' in json else 1

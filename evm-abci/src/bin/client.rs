@@ -189,9 +189,9 @@ async fn send_transaction(host: &str, from: Address, to: Address, value: U256) -
 #[tokio::main]
 async fn main() -> Result<()> {
     // the ABCI port on the various narwhal primaries
-    let host_1 = "http://127.0.0.1:3002";
-    let host_2 = "http://127.0.0.1:3009";
-    let host_3 = "http://127.0.0.1:3016";
+    let host_1 = "http://127.0.0.1:3003";
+    let host_2 = "http://127.0.0.1:3011";
+    let host_3 = "http://127.0.0.1:3019";
 
     let value = ethers::utils::parse_units(1, 18)?;
 
@@ -206,7 +206,7 @@ async fn main() -> Result<()> {
     )
     .await?;
     println!("Waiting for consensus...");
-    tokio::time::sleep(std::time::Duration::from_millis(3000)).await;
+    tokio::time::sleep(std::time::Duration::from_millis(350)).await;
 
     // TODO: Query initial balances from host_1
     query_balance(host_1, addresses[0]).await?;
@@ -228,7 +228,7 @@ async fn main() -> Result<()> {
 
     println!("Waiting for consensus...");
     // Takes ~5 seconds to actually apply the state transition?
-    tokio::time::sleep(std::time::Duration::from_millis(3000)).await;
+    tokio::time::sleep(std::time::Duration::from_millis(350)).await;
 
     println!("===============================");
 

@@ -12,7 +12,7 @@ use tendermint_proto::abci::ResponseQuery;
 
 // Narwhal types
 use narwhal_crypto::Digest;
-// use narwhal_primary::Certificate;
+use narwhal_primary::Certificate;
 use narwhal_hs::Block;
 
 pub struct Engine {
@@ -60,9 +60,13 @@ impl Engine {
 
     /// On each new certificate, increment the block height to proposed and run through the
     /// BeginBlock -> DeliverTx for each tx in the certificate -> EndBlock -> Commit event loop.
-    async fn handle_cert(&mut self, certificate: Block) -> eyre::Result<()> {
+    async fn handle_cert(&mut self, block: Block) -> eyre::Result<()> {
         // drive the app through the event loop
         // let tx_count = self.reconstruct_and_deliver_txs(certificate).await?;
+        let mut tx_count = 0;
+        for certificate in block.payload {
+            tx_count += self.reconstruct_and_deliver_txs(certificate).await?;
+        }
         self.commit(tx_count).await?;
         Ok(())
     }
@@ -220,35 +224,35 @@ impl Engine {
 
     /// Reconstructs the batch corresponding to the provided Primary's certificate from the Workers' stores
     /// and proceeds to deliver each tx to the App over ABCI's DeliverTx endpoint.
-    // async fn reconstruct_and_deliver_txs(
-    //     &mut self,
-    //     certificate: Certificate,
-    // ) -> eyre::Result<usize> {
-    //     #[allow(clippy::needless_collect)]
-    //     let batches = certificate
-    //         .clone()
-    //         .header
-    //         .payload
-    //         .into_iter()
-    //         .map(|(digest, worker_id)| {
-    //             let res = self.reconstruct_batch(digest, worker_id);
-    //             res
-    //         })
-    //         .collect::<Vec<_>>();
+    async fn reconstruct_and_deliver_txs(
+        &mut self,
+        certificate: Certificate,
+    ) -> eyre::Result<usize> {
+        #[allow(clippy::needless_collect)]
+        let batches = certificate
+            .clone()
+            .header
+            .payload
+            .into_iter()
+            .map(|(digest, worker_id)| {
+                let res = self.reconstruct_batch(digest, worker_id);
+                res
+            })
+            .collect::<Vec<_>>();
 
-    //     // Deliver
-    //     let mut total_count = 0;
-    //     for batch in batches {
-    //         // this will throw an error if the deserialization failed anywhere
-    //         let batch = batch.map_err(|e| eyre::eyre!(e))?;
-    //         total_count += self
-    //             .deliver_batch(batch)
-    //             .await
-    //             .map_err(|e| eyre::eyre!(e))?;
-    //     }
+        // Deliver
+        let mut total_count = 0;
+        for batch in batches {
+            // this will throw an error if the deserialization failed anywhere
+            let batch = batch.map_err(|e| eyre::eyre!(e))?;
+            total_count += self
+                .deliver_batch(batch)
+                .await
+                .map_err(|e| eyre::eyre!(e))?;
+        }
 
-    //     Ok(total_count)
-    // }
+        Ok(total_count)
+    }
 
     /// Helper function for getting the database handle to a worker associated
     /// with a primary (e.g. Primary db-0 -> Worker-0 db-0-0, Wroekr-1 db-0-1 etc.)

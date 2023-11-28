@@ -104,21 +104,21 @@ class LocalBench:
 
             sleep(1)
 
-            # print("[+] Spinning up clients")
-            # # The benchmark clients connect to the worker addresses to submit transactions
-            # # Starts 1 client for each worker process.
-            # rate_share = ceil(rate / committee.workers())
-            # for i, addresses in enumerate(workers_addresses):
-            #     for (id, address) in addresses:
-            #         cmd = CommandMaker.run_client(
-            #             address,
-            #             self.tx_size,
-            #             rate_share,
-            #             [x for y in workers_addresses for _, x in y]
-            #         )
-            #         log_file = PathMaker.client_log_file(i, id)
-            #         print("--> [+] Running", cmd, log_file)
-            #         self._background_run(cmd, log_file)
+            print("[+] Spinning up clients")
+            # The benchmark clients connect to the worker addresses to submit transactions
+            # Starts 1 client for each worker process.
+            rate_share = ceil(rate / committee.workers())
+            for i, addresses in enumerate(workers_addresses):
+                for (id, address) in addresses:
+                    cmd = CommandMaker.run_client(
+                        address,
+                        self.tx_size,
+                        rate_share,
+                        [x for y in workers_addresses for _, x in y]
+                    )
+                    log_file = PathMaker.client_log_file(i, id)
+                    print("--> [+] Running", cmd, log_file)
+                    self._background_run(cmd, log_file)
 
 
             print("[+] Spinning up primaries")
@@ -159,10 +159,11 @@ class LocalBench:
             sleep(self.duration)
             self._kill_nodes()
 
-            # # Parse logs and return the parser.
-            # Print.info('Parsing logs...')
-            # return LogParser.process(PathMaker.logs_path(), faults=self.faults)
+            # Parse logs and return the parser.
+            Print.info('Parsing logs...')
+            return LogParser.process(PathMaker.logs_path(), faults=self.faults)
 
         except Exception as e:
             self._kill_nodes()
+            print(e)
             raise BenchError('Failed to run benchmark', e)

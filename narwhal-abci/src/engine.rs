@@ -210,7 +210,10 @@ impl Engine {
             Ok(WorkerMessage::Batch(batch)) => {
                 for tx in batch {
                     let res = self.deliver_tx(tx).await.map_err(|e| eyre::eyre!(e));
-                    log::error!("Response: {:?}", res);
+                    match res {
+                        Err(e) => eyre::bail!("Error {:?}", e),
+                        _ => {}
+                    }
                     count += 1;
                 }
             }

@@ -1,6 +1,2 @@
 [workspace]
 members = ["node", "narwhal-abci", "evm-abci"]
-
-# TODO: Remove once new revm release
-# [patch.crates-io]
-# revm = { git = "https://github.com/bluealloy/revm", package = "revm" }

@@ -18,7 +18,7 @@ def local(ctx, debug=True):
         'workers': 1,
         'rate': 10_000,
         'tx_size': 512,
-        'duration': 25,
+        'duration': 5,
     }
     node_params = {
         'timeout_delay': 200,  # ms
@@ -31,15 +31,16 @@ def local(ctx, debug=True):
         'max_batch_delay': 200  # ms
     }
 
-    bencher = LocalBench(bench_params, node_params)
-    print(bencher)
-    bencher.run()
+    # bencher = LocalBench(bench_params, node_params)
+    # print(bencher)
+    # res = bencher.run(debug)
+    # print(res)
 
-    # try:
-    #     ret = LocalBench(bench_params, node_params).run(debug)
-    #     print(ret.result())
-    # except BenchError as e:
-    #     Print.error(e)
+    try:
+        ret = LocalBench(bench_params, node_params).run(debug)
+        print(ret.result())
+    except BenchError as e:
+        Print.error(e)
 
 
 @task

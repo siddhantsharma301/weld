@@ -889,7 +889,6 @@ dependencies = [
 [[package]]
 name = "config"
 version = "0.1.0"
-source = "git+https://github.com/asonnino/narwhal/?branch=narwhal-hs#add64984c62b7cf24dced6d40df52ae57032cfa3"
 dependencies = [
  "crypto",
  "log",
@@ -901,7 +900,6 @@ dependencies = [
 [[package]]
 name = "consensus"
 version = "0.1.0"
-source = "git+https://github.com/asonnino/narwhal/?branch=narwhal-hs#add64984c62b7cf24dced6d40df52ae57032cfa3"
 dependencies = [
  "config",
  "crypto",
@@ -1048,7 +1046,6 @@ checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/asonnino/narwhal/?branch=narwhal-hs#add64984c62b7cf24dced6d40df52ae57032cfa3"
 dependencies = [
  "base64 0.13.1",
  "ed25519-dalek",
@@ -2663,7 +2660,6 @@ dependencies = [
 [[package]]
 name = "hotstuff"
 version = "0.1.0"
-source = "git+https://github.com/asonnino/narwhal/?branch=narwhal-hs#add64984c62b7cf24dced6d40df52ae57032cfa3"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -3310,7 +3306,6 @@ dependencies = [
 [[package]]
 name = "network"
 version = "0.1.0"
-source = "git+https://github.com/asonnino/narwhal/?branch=narwhal-hs#add64984c62b7cf24dced6d40df52ae57032cfa3"
 dependencies = [
  "async-trait",
  "bytes",
@@ -3344,6 +3339,9 @@ dependencies = [
 name = "node"
 version = "0.1.0"
 dependencies = [
+ "anvil",
+ "anvil-rpc",
+ "anyhow",
  "bincode",
  "bytes",
  "clap 2.34.0",
@@ -3351,6 +3349,8 @@ dependencies = [
  "consensus",
  "crypto",
  "env_logger",
+ "ethers 2.0.4",
+ "evm-abci",
  "eyre",
  "futures",
  "hex",
@@ -3370,6 +3370,7 @@ dependencies = [
  "tokio-util 0.6.10",
  "warp",
  "worker",
+ "yansi",
 ]
 
 [[package]]
@@ -3931,7 +3932,6 @@ dependencies = [
 [[package]]
 name = "primary"
 version = "0.1.0"
-source = "git+https://github.com/asonnino/narwhal/?branch=narwhal-hs#add64984c62b7cf24dced6d40df52ae57032cfa3"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -5005,7 +5005,6 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 [[package]]
 name = "store"
 version = "0.1.0"
-source = "git+https://github.com/asonnino/narwhal/?branch=narwhal-hs#add64984c62b7cf24dced6d40df52ae57032cfa3"
 dependencies = [
  "rocksdb",
  "tokio",
@@ -6316,7 +6315,6 @@ dependencies = [
 [[package]]
 name = "worker"
 version = "0.1.0"
-source = "git+https://github.com/asonnino/narwhal/?branch=narwhal-hs#add64984c62b7cf24dced6d40df52ae57032cfa3"
 dependencies = [
  "async-trait",
  "bincode",

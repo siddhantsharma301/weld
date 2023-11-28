@@ -53,7 +53,7 @@ class LocalBench:
             # Cleanup all files.
             cmd = f'{CommandMaker.clean_logs()} ; {CommandMaker.cleanup()}'
             subprocess.run([cmd], shell=True, stderr=subprocess.DEVNULL)
-            # sleep(0.5)  # Removing the store may take time.
+            sleep(0.5)  # Removing the store may take time.
 
             print(cmd)
 

@@ -18,7 +18,7 @@ class LogParser:
         inputs = [clients, primaries, workers]
         assert all(isinstance(x, list) for x in inputs)
         assert all(isinstance(x, str) for y in inputs for x in y)
-        # assert all(x for x in inputs)
+        assert all(x for x in inputs)
 
         self.faults = faults
         if isinstance(faults, int):
@@ -36,7 +36,7 @@ class LogParser:
             raise ParseError(f'Failed to parse clients\' logs: {e}')
         self.size, self.rate, self.start, misses, self.sent_samples \
             = zip(*results)
-        # self.misses = sum(misses)
+        self.misses = sum(misses)
 
         # Parse the primaries logs.
         try:
@@ -45,6 +45,7 @@ class LogParser:
         except (ValueError, IndexError, AttributeError) as e:
             raise ParseError(f'Failed to parse nodes\' logs: {e}')
         proposals, commits, self.configs, primary_ips = zip(*results)
+        print("commits", commits)
         self.proposals = self._merge_results([x.items() for x in proposals])
         self.commits = self._merge_results([x.items() for x in commits])
 
@@ -63,10 +64,10 @@ class LogParser:
         self.collocate = set(primary_ips) == set(workers_ips)
 
         # Check whether clients missed their target rate.
-        # if self.misses != 0:
-        #     Print.warn(
-        #         f'Clients missed their target rate {self.misses:,} time(s)'
-        #     )
+        if self.misses != 0:
+            Print.warn(
+                f'Clients missed their target rate {self.misses:,} time(s)'
+            )
 
     def _merge_results(self, input):
         # Keep the earliest timestamp.

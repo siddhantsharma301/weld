@@ -193,15 +193,83 @@ async fn send_transaction(host: &str, from: Address, to: Address, value: U256) -
 #[tokio::main]
 async fn main() -> Result<()> {
     // the ABCI port on the various narwhal primaries
-    let host_1 = "http://127.0.0.1:3003";
-    let host_2 = "http://127.0.0.1:3011";
-    let host_3 = "http://127.0.0.1:3019";
-    let host_4 = "http://127.0.0.1:3027";
-    let hosts = [host_1, host_2, host_3, host_4];
+    // let host_1 = "http://127.0.0.1:3003";
+    // let host_2 = "http://127.0.0.1:3011";
+    // let host_3 = "http://127.0.0.1:3019";
+    // let host_4 = "http://127.0.0.1:3027";
+    // let hosts = [host_1, host_2, host_3, host_4];
 
-    let addresses = get_accounts(host_4).await?;
+    // let addresses = get_accounts(host_4).await?;
 
-    let mut rng = rand::thread_rng();
+    // let mut rng = rand::thread_rng();
+
+    // let start = Instant::now();
+    // while start.elapsed() < Duration::from_secs(20) {
+    //     for from in 0..10 {
+    //         let host = rng.gen_range(0..4);
+    //         let mut to = rng.gen_range(0..10);
+    //         while to == from {
+    //             to = rng.gen_range(0..10);
+    //         }
+    //         let amount = rng.gen_range(1..10);
+    //         let units = rng.gen_range(1..5);
+    //         let value = ethers::utils::parse_units(amount, units)?;
+    //         send_transaction(hosts[host], addresses[from], addresses[to], value.into()).await?;
+    //     }
+    //     let eepy = rng.gen_range(50..150);
+    //     sleep(Duration::from_millis(eepy)).await;
+    // }
+
+    // for i in 0..10 {
+    //     query_balance(host_1, addresses[i]).await?;
+    // }
+
+    // // Reduce the balance of address 0 and wait for state transition
+    // send_transaction(
+    //     host_2,
+    //     addresses[0],
+    //     addresses[8],
+    //     ethers::utils::parse_units(98.5, 18)?.into(),
+    // )
+    // .await?;
+    // println!("Waiting for consensus...");
+    // tokio::time::sleep(std::time::Duration::from_millis(350)).await;
+
+    // // TODO: Query initial balances from host_1
+    // query_balance(host_1, addresses[0]).await?;
+    // query_balance(host_1, addresses[1]).await?;
+    // query_balance(host_1, addresses[2]).await?;
+
+    // println!("===============================");
+
+    // // Send conflicting transactions
+    // println!(
+    //     "{} sends {} transactions:",
+    //     Paint::new("Alice").bold(),
+    //     Paint::red(format!("conflicting")).bold()
+    // );
+    // send_transaction(host_2, addresses[0], addresses[1], value.into()).await?;
+    // send_transaction(host_3, addresses[0], addresses[2], value.into()).await?;
+
+    // println!("===============================");
+
+    // println!("Waiting for consensus...");
+    // // Takes ~5 seconds to actually apply the state transition?
+    // tokio::time::sleep(std::time::Duration::from_millis(350)).await;
+
+    // println!("===============================");
+
+    // // TODO: Query final balances from host_2
+    // query_balance(host_2, addresses[0]).await?;
+    // query_balance(host_2, addresses[1]).await?;
+    // query_balance(host_2, addresses[2]).await?;
+
+    // println!("===============================");
+
+    // // TODO: Query final balances from host_3
+    // query_balance(host_3, addresses[0]).await?;
+    // query_balance(host_3, addresses[1]).await?;
+    // query_balance(host_3, addresses[2]).await?;
 
     Ok(())
 }

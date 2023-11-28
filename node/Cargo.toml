@@ -45,7 +45,7 @@ yansi = "0.5.1"
 ethers = { version = "2.0.4" }
 
 [features]
-benchmark = ["worker/benchmark", "primary/benchmark", "consensus/benchmark"]
+benchmark = ["worker/benchmark", "primary/benchmark", "hotstuff/benchmark"]
 
 [[bin]]         
 name = "benchmark_client"   

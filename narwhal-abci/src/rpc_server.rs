@@ -39,13 +39,24 @@ impl RpcApi<ResponseQuery> {
             .and_then(move |req: BroadcastTxQuery| async move {
                 log::warn!("broadcast_tx: {:?}", req);
 
-                let stream = TcpStream::connect(self.mempool_address)
+                // let stream = TcpStream::connect(self.mempool_address)
+                //     .await
+                //     .wrap_err(format!(
+                //         "ROUTE_BROADCAST_TX failed to connect to {}",
+                //         self.mempool_address
+                //     ))
+                //     .unwrap();
+                let stream_res = TcpStream::connect(self.mempool_address)
                     .await
                     .wrap_err(format!(
                         "ROUTE_BROADCAST_TX failed to connect to {}",
                         self.mempool_address
-                    ))
-                    .unwrap();
+                    ));
+                if stream_res.is_err() {
+                    log::error!("failure to connect: {:?}", stream_res);
+                    return Ok::<_, Rejection>(format!("idk man"));
+                }
+                let stream = stream_res.unwrap();
                 let mut transport: Framed<TcpStream, LengthDelimitedCodec> =
                     Framed::new(stream, LengthDelimitedCodec::new());
 

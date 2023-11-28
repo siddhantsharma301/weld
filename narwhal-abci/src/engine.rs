@@ -64,11 +64,11 @@ impl Engine {
     async fn handle_cert(&mut self, block: Block) -> eyre::Result<()> {
         // drive the app through the event loop
         // let tx_count = self.reconstruct_and_deliver_txs(certificate).await?;
-        // let mut tx_count = 0;
-        // for certificate in block.payload {
-        //     tx_count += self.reconstruct_and_deliver_txs(certificate).await?;
-        // }
-        // self.commit(tx_count).await?;
+        let mut tx_count = 0;
+        for certificate in block.payload {
+            tx_count += self.reconstruct_and_deliver_txs(certificate).await?;
+        }
+        self.commit(tx_count).await?;
         Ok(())
     }
 

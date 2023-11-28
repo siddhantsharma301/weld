@@ -18,7 +18,7 @@ def local(ctx, debug=True):
         'workers': 1,
         'rate': 10_000,
         'tx_size': 512,
-        'duration': 20,
+        'duration': 25,
     }
     node_params = {
         'timeout_delay': 200,  # ms

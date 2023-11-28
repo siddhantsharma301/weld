@@ -15,13 +15,13 @@ def local(ctx, debug=True):
     bench_params = {
         'faults': 0,
         'nodes': 4,
-        'workers': 2,
+        'workers': 1,
         'rate': 10_000,
         'tx_size': 512,
-        'duration': 10,
+        'duration': 20,
     }
     node_params = {
-        'timeout_delay': 500,  # ms
+        'timeout_delay': 1_000,  # ms
         'header_size': 1_000,  # bytes
         'max_header_delay': 200,  # ms
         'gc_depth': 50,  # rounds

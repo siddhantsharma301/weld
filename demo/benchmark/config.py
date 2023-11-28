@@ -67,10 +67,10 @@ class Committee:
         self.json = {'authorities': OrderedDict()}
         for name, hosts in addresses.items():
             host = hosts.pop(0)
-            consensus_addr = {
-                'consensus_to_consensus': f'{host}:{port}',
-            }
-            port += 1
+            # consensus_addr = {
+            #     'consensus_to_consensus': f'{host}:{port}',
+            # }
+            # port += 1
 
             primary_addr = {
                 'primary_to_primary': f'{host}:{port}',
@@ -93,7 +93,7 @@ class Committee:
 
             self.json['authorities'][name] = {
                 'stake': 1,
-                'consensus': consensus_addr,
+                # 'consensus': consensus_addr,
                 'primary': primary_addr,
                 'workers': workers_addr
             }

@@ -110,18 +110,18 @@ impl Client {
         let burst = self.rate / PRECISION;
         let mut tx = BytesMut::with_capacity(self.size);
         let mut counter = 0;
-        let mut r = rand::thread_rng().gen();
+        // let mut r = rand::thread_rng().gen();
         let mut rng = rand::thread_rng();
-        // let addresses = get_accounts("http://127.0.0.1:3027").await?;
+        let addresses = get_accounts("http://127.0.0.1:3002").await?;
         let mut transport = Framed::new(stream, LengthDelimitedCodec::new());
         let interval = interval(Duration::from_millis(BURST_DURATION));
         tokio::pin!(interval);
 
-        // let host_1 = "http://127.0.0.1:3004";
-        // let host_2 = "http://127.0.0.1:3012";
-        // let host_3 = "http://127.0.0.1:3020";
-        // let host_4 = "http://127.0.0.1:3028";
-        // let hosts = [host_1, host_2, host_3, host_4];
+        let host_1 = "http://127.0.0.1:3002";
+        let host_2 = "http://127.0.0.1:3009";
+        let host_3 = "http://127.0.0.1:3016";
+        let host_4 = "http://127.0.0.1:3023";
+        let hosts = [host_1, host_2, host_3, host_4];
 
         // NOTE: This log entry is used to compute performance.
         info!("Start sending transactions");
@@ -131,37 +131,37 @@ impl Client {
             let now = Instant::now();
 
             for x in 0..burst {
-                // let host = rng.gen_range(0..4);
-                // let from = rng.gen_range(0..10);
-                // let mut to = rng.gen_range(0..10);
-                // while to == from {
-                //     to = rng.gen_range(0..10);
-                // }
-                // let amount = rng.gen_range(1..10);
-                // let units = rng.gen_range(1..5);
-                // let value = ethers::utils::parse_units(amount, units)?;
-                // match send_transaction(hosts[host], addresses[from], addresses[to], value.into(), counter).await {
-                //     Err(_) => {},
-                //     Ok(_) => {}
-                // }
-                if x == counter % burst {
-                    // NOTE: This log entry is used to compute performance.
-                    info!("Sending sample transaction {}", counter);
-
-                    tx.put_u8(0u8); // Sample txs start with 0.
-                    tx.put_u64(counter); // This counter identifies the tx.
-                } else {
-                    r += 1;
-                    tx.put_u8(1u8); // Standard txs start with 1.
-                    tx.put_u64(r); // Ensures all clients send different txs.
-                };
-
-                tx.resize(self.size, 0u8);
-                let bytes = tx.split().freeze();
-                if let Err(e) = transport.send(bytes).await {
-                    warn!("Failed to send transaction: {}", e);
-                    break 'main;
+                let host = rng.gen_range(0..4);
+                let from = rng.gen_range(0..10);
+                let mut to = rng.gen_range(0..10);
+                while to == from {
+                    to = rng.gen_range(0..10);
                 }
+                let amount = rng.gen_range(1..10);
+                let units = rng.gen_range(1..5);
+                let value = ethers::utils::parse_units(amount, units)?;
+                match send_transaction(hosts[host], addresses[from], addresses[to], value.into(), counter).await {
+                    Err(_) => {},
+                    Ok(_) => {}
+                }
+                // if x == counter % burst {
+                //     // NOTE: This log entry is used to compute performance.
+                //     info!("Sending sample transaction {}", counter);
+
+                //     tx.put_u8(0u8); // Sample txs start with 0.
+                //     tx.put_u64(counter); // This counter identifies the tx.
+                // } else {
+                //     r += 1;
+                //     tx.put_u8(1u8); // Standard txs start with 1.
+                //     tx.put_u64(r); // Ensures all clients send different txs.
+                // };
+
+                // tx.resize(self.size, 0u8);
+                // let bytes = tx.split().freeze();
+                // if let Err(e) = transport.send(bytes).await {
+                //     warn!("Failed to send transaction: {}", e);
+                //     break 'main;
+                // }
             }
             if now.elapsed().as_millis() > BURST_DURATION as u128 {
                 // NOTE: This log entry is used to compute performance.

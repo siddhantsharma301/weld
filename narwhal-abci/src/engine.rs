@@ -14,7 +14,6 @@ use tendermint_proto::abci::ResponseQuery;
 // Narwhal types
 use narwhal_crypto::Digest;
 use narwhal_primary::Certificate;
-use narwhal_hs::Block;
 
 pub struct Engine {
     /// The path to the Primary's store, so that the Engine can query each of the Primary's workers
@@ -43,7 +42,7 @@ impl Engine {
     }
 
     /// Receives an ordered list of certificates and apply any application-specific logic.
-    pub async fn run(&mut self, mut rx_output: Receiver<Block>) -> eyre::Result<()> {
+    pub async fn run(&mut self, mut rx_output: Receiver<Certificate>) -> eyre::Result<()> {
         loop {
             tokio::select! {
                 Some(certificate) = rx_output.recv() => {
@@ -61,14 +60,10 @@ impl Engine {
 
     /// On each new certificate, increment the block height to proposed and run through the
     /// BeginBlock -> DeliverTx for each tx in the certificate -> EndBlock -> Commit event loop.
-    async fn handle_cert(&mut self, block: Block) -> eyre::Result<()> {
+    async fn handle_cert(&mut self, certificate: Certificate) -> eyre::Result<()> {
         // drive the app through the event loop
-        // let tx_count = self.reconstruct_and_deliver_txs(certificate).await?;
-        // let mut tx_count = 0;
-        // for certificate in block.payload {
-        //     tx_count += self.reconstruct_and_deliver_txs(certificate).await?;
-        // }
-        // self.commit(tx_count).await?;
+        let tx_count = self.reconstruct_and_deliver_txs(certificate).await?;
+        self.commit(tx_count).await?;
         Ok(())
     }
 

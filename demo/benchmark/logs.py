@@ -45,7 +45,6 @@ class LogParser:
         except (ValueError, IndexError, AttributeError) as e:
             raise ParseError(f'Failed to parse nodes\' logs: {e}')
         proposals, commits, self.configs, primary_ips = zip(*results)
-        print("commits", commits)
         self.proposals = self._merge_results([x.items() for x in proposals])
         self.commits = self._merge_results([x.items() for x in commits])
 

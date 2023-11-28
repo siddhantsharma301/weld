@@ -1,5 +1,4 @@
 use crypto::PublicKey;
-use crypto::SignatureService;
 use eyre::{Result, WrapErr};
 use std::net::SocketAddr;
 
@@ -8,7 +7,7 @@ use clap::{crate_name, crate_version, App, AppSettings, ArgMatches, SubCommand};
 use config::Export as _;
 use config::Import as _;
 use config::{Committee, KeyPair, Parameters, WorkerId};
-use hotstuff::{Block, Consensus};
+use consensus::Consensus;
 use env_logger::Env;
 use primary::Primary;
 use store::Store;
@@ -114,9 +113,6 @@ async fn run(matches: &ArgMatches<'_>) -> Result<()> {
             let (tx_feedback, rx_feedback) = channel(CHANNEL_CAPACITY);
 
             let keypair_name = keypair.name;
-            let name = keypair.name;
-
-            let signature_service = SignatureService::new(keypair.secret);
 
             let app_api = sub_matches.value_of("app-api").unwrap().to_string();
             let abci_api = sub_matches.value_of("abci-api").unwrap().to_string();
@@ -124,20 +120,16 @@ async fn run(matches: &ArgMatches<'_>) -> Result<()> {
             log::info!("Starting primary with abci-api: {}", abci_api);
 
             Primary::spawn(
-                name,
+                keypair,
                 committee.clone(),
                 parameters.clone(),
-                signature_service.clone(),
                 store.clone(),
                 /* tx_consensus */ tx_new_certificates,
                 /* rx_consensus */ rx_feedback,
             );
             Consensus::spawn(
-                name,
                 committee.clone(),
-                parameters,
-                signature_service,
-                store.clone(),
+                parameters.gc_depth,
                 /* rx_primary */ rx_new_certificates,
                 /* tx_primary */ tx_feedback,
                 tx_output,
@@ -184,7 +176,7 @@ async fn run(matches: &ArgMatches<'_>) -> Result<()> {
 }
 
 async fn process(
-    rx_output: Receiver<Block>,
+    rx_output: Receiver<primary::Certificate>,
     store_path: &str,
     keypair_name: PublicKey,
     committee: Committee,

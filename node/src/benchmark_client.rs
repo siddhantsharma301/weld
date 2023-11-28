@@ -144,24 +144,6 @@ impl Client {
                     Err(_) => {},
                     Ok(_) => {}
                 }
-                // if x == counter % burst {
-                //     // NOTE: This log entry is used to compute performance.
-                //     info!("Sending sample transaction {}", counter);
-
-                //     tx.put_u8(0u8); // Sample txs start with 0.
-                //     tx.put_u64(counter); // This counter identifies the tx.
-                // } else {
-                //     r += 1;
-                //     tx.put_u8(1u8); // Standard txs start with 1.
-                //     tx.put_u64(r); // Ensures all clients send different txs.
-                // };
-
-                // tx.resize(self.size, 0u8);
-                // let bytes = tx.split().freeze();
-                // if let Err(e) = transport.send(bytes).await {
-                //     warn!("Failed to send transaction: {}", e);
-                //     break 'main;
-                // }
             }
             if now.elapsed().as_millis() > BURST_DURATION as u128 {
                 // NOTE: This log entry is used to compute performance.
@@ -217,11 +199,13 @@ async fn send_transaction(host: &str, from: Address, to: Address, value: U256, c
         counter
     );
 
+    let r = rand::thread_rng().gen_range(0..150_000);
     let tx = TransactionRequest::new()
         .from(from)
         .to(to)
         .value(value)
-        .gas(21000);
+        .gas(21000)
+        .nonce(r);
 
     let tx = serde_json::to_string(&tx)?;
 

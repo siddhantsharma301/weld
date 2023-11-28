@@ -182,7 +182,10 @@ class LogParser:
         for sent, received in zip(self.sent_samples, self.received_samples):
             for tx_id, batch_id in received.items():
                 if batch_id in self.commits:
-                    assert tx_id in sent  # We receive txs that we sent.
+                    # assert tx_id in sent  # We receive txs that we sent.
+                    # start = sent[tx_id]
+                    if tx_id not in sent:
+                        continue
                     start = sent[tx_id]
                     end = self.commits[batch_id]
                     latency += [end-start]

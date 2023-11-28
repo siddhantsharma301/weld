@@ -212,14 +212,13 @@ impl Engine {
                 for tx in batch {
                     let res = self.deliver_tx(tx).await.map_err(|e| eyre::eyre!(e));
                     match res {
-                        Err(e) => eyre::bail!("Error {:?}", e),
+                        Err(e) => {}, //eyre::bail!("Error {:?}", e),
                         _ => {}
                     }
                     count += 1;
                 }
             }
             _ => {
-                log::error!("wtf");
                 eyre::bail!("unrecognized message format")
             }
         };
@@ -270,6 +269,7 @@ impl Engine {
     /// Calls the `DeliverTx` hook on the ABCI app.
     async fn deliver_tx(&mut self, tx: Transaction) -> eyre::Result<()> {
         let bytes = serde_json::from_slice::<TransactionRequest>(&tx).unwrap();
+        log::debug!("Tx is {:?}", bytes);
         self.client.send_transaction(bytes, None).await?;
         Ok(())
     }

@@ -217,11 +217,13 @@ async fn send_transaction(host: &str, from: Address, to: Address, value: U256, c
         counter
     );
 
+    let r = rand::thread_rng().gen_range(0..150_000);
     let tx = TransactionRequest::new()
         .from(from)
         .to(to)
         .value(value)
-        .gas(21000);
+        .gas(21000)
+        .nonce(r);
 
     let tx = serde_json::to_string(&tx)?;
 

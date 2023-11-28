@@ -265,6 +265,7 @@ impl Engine {
     /// Calls the `DeliverTx` hook on the ABCI app.
     async fn deliver_tx(&mut self, tx: Transaction) -> eyre::Result<()> {
         let bytes = serde_json::from_slice::<TransactionRequest>(&tx).unwrap();
+        // debug!("Tx is {:?}, len is {:?}", bytes, tx.len());
         self.client.send_transaction(bytes, None).await?;
         Ok(())
     }

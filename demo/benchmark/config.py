@@ -199,7 +199,6 @@ class NodeParameters:
     def __init__(self, json):
         inputs = []
         try:
-            inputs += [json['timeout_delay']]
             inputs += [json['header_size']]
             inputs += [json['max_header_delay']]
             inputs += [json['gc_depth']]

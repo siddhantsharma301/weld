@@ -21,7 +21,6 @@ def local(ctx, debug=True):
         'duration': 20,
     }
     node_params = {
-        'timeout_delay': 1_000,  # ms
         'header_size': 1_000,  # bytes
         'max_header_delay': 200,  # ms
         'gc_depth': 50,  # rounds

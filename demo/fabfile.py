@@ -21,7 +21,6 @@ def local(ctx, debug=True):
         'duration': 20,
     }
     node_params = {
-        'timeout_delay': 1_000,  # ms
         'header_size': 1_000,  # bytes
         'max_header_delay': 200,  # ms
         'gc_depth': 50,  # rounds
@@ -37,7 +36,7 @@ def local(ctx, debug=True):
     # print(res)
 
     try:
-        ret = LocalBench(bench_params, node_params).run(debug)
+        ret = LocalBench(bench_params, node_params).run_several(debug, runs=2)
         print(ret.result())
     except BenchError as e:
         Print.error(e)

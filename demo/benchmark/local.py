@@ -9,6 +9,8 @@ from benchmark.config import Key, LocalCommittee, NodeParameters, BenchParameter
 from benchmark.logs import LogParser, ParseError
 from benchmark.utils import Print, BenchError, PathMaker
 
+import pandas as pd
+
 
 class LocalBench:
     BASE_PORT = 3000
@@ -29,7 +31,7 @@ class LocalBench:
         name = splitext(basename(log_file))[0]
         cmd = f'{command} &> {log_file}'
         # cmd = f'{command}'
-        print("Background run:", ['tmux', 'new', '-d', '-s', name, cmd])
+        # print("Background run:", ['tmux', 'new', '-d', '-s', name, cmd])
         subprocess.run(['tmux', 'new', '-d', '-s', name, cmd], check=True)
 
     def _kill_nodes(self):
@@ -83,7 +85,7 @@ class LocalBench:
             # print(PathMaker.committee_file())
             committee.print(PathMaker.committee_file())
 
-            print(names, committee)
+            # print(names, committee)
 
 
             self.node_parameters.print(PathMaker.parameters_file())
@@ -117,7 +119,7 @@ class LocalBench:
                         [x for y in workers_addresses for _, x in y]
                     )
                     log_file = PathMaker.client_log_file(i, id)
-                    print("--> [+] Running", cmd, log_file)
+                    # print("--> [+] Running", cmd, log_file)
                     self._background_run(cmd, log_file)
 
 
@@ -167,3 +169,35 @@ class LocalBench:
             self._kill_nodes()
             print(e)
             raise BenchError('Failed to run benchmark', e)
+        
+    def run_several(self, debug=False, runs=5):
+        count, runs = 0, runs
+        c_tps, c_bps, c_lat = [], [], []
+        e2e_tps, e2e_bps, e2e_lat = [], [], []
+        while count < runs:
+            Print.info(f"RUN {count}")
+            try:
+                parsed = self.run(debug=debug)
+                consensus_tps, consensus_bps, _ = parsed._consensus_throughput()
+                if consensus_tps > 0:
+                    count += 1
+                else:
+                    Print.info("Run failed, trying again due to no tps")
+                    continue
+                consensus_latency = parsed._consensus_latency() * 1_000
+                end_to_end_tps, end_to_end_bps, _ = parsed._end_to_end_throughput()
+                end_to_end_latency = parsed._end_to_end_latency() * 1_000
+                
+                c_tps.append(consensus_tps)
+                c_bps.append(consensus_bps)
+                c_lat.append(consensus_latency)
+                e2e_tps.append(end_to_end_tps)
+                e2e_bps.append(end_to_end_bps)
+                e2e_lat.append(end_to_end_latency)
+            except Exception as e:
+                raise e
+        
+        df = pd.DataFrame({"Consensus TPS": c_tps, "Consensus BPS": c_bps, "Consensus Latency": c_lat,
+                           "End-to-end TPS": e2e_tps, "End-to-end BPS": e2e_bps, "End-to-end latency": e2e_lat})
+        Print.info(f"{df.describe()}")
+        return parsed

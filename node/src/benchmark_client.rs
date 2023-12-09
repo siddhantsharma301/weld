@@ -168,7 +168,6 @@ impl Client {
                 // NOTE: This log entry is used to compute performance.
                 warn!("Transaction rate too high for this client");
             }
-            // counter += 1;
         }
         Ok(())
     }
@@ -218,13 +217,13 @@ async fn send_transaction(host: &str, from: Address, to: Address, value: U256, c
         counter
     );
 
-    let r = rand::thread_rng().gen_range(0..200_000);
+    // let r = rand::thread_rng().gen_range(0..150_000);
     let tx = TransactionRequest::new()
         .from(from)
         .to(to)
         .value(value)
-        .gas(21000)
-        .nonce(r);
+        .gas(21000 + counter)
+        .nonce(counter);
 
     let tx = serde_json::to_string(&tx)?;
 

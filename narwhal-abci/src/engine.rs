@@ -207,7 +207,7 @@ impl Engine {
                 for tx in batch {
                     let res = self.deliver_tx(tx).await.map_err(|e| eyre::eyre!(e));
                     match res {
-                        Err(e) => eyre::bail!("Error {:?}", e),
+                        Err(_) => {},
                         _ => {}
                     }
                     count += 1;

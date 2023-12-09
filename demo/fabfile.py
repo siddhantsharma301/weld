@@ -36,7 +36,8 @@ def local(ctx, debug=True):
     # print(res)
 
     try:
-        ret = LocalBench(bench_params, node_params).run_several(debug, runs=2)
+        # ret = LocalBench(bench_params, node_params).run_several(debug, runs=2)
+        ret = LocalBench(bench_params, node_params).run(debug)
         print(ret.result())
     except BenchError as e:
         Print.error(e)

@@ -21,8 +21,8 @@ hex = "0.4.3"
 tendermint-abci = { version = "0.23.7", features = ["client"] }
 tendermint-proto = "0.23.7"
 
-narwhal_primary = { package = "primary", path = "/Users/siddhant/documents/code/reducing-latency-in-dag-bft-protocols/primary" }
-narwhal_crypto = { package = "crypto", path = "/Users/siddhant/documents/code/reducing-latency-in-dag-bft-protocols/crypto"}
+narwhal_primary = { package = "primary", path = "/Users/doge/Documents/cs262/reducing-latency-in-dag-bft-protocols/primary" }
+narwhal_crypto = { package = "crypto", path = "/Users/doge/Documents/cs262/reducing-latency-in-dag-bft-protocols/crypto"}
 
 serde_json = "1.0.82"
 

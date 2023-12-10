@@ -188,7 +188,7 @@ class LogParser:
                         continue
                     start = sent[tx_id]
                     end = self.commits[batch_id]
-                    latency += [end-start]
+                    latency += [start-end]
         return mean(latency) if latency else 0
 
     def result(self):
